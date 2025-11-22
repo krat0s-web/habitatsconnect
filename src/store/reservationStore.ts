@@ -9,10 +9,11 @@ interface ReservationStore {
   addReservation: (reservation: Reservation) => void;
   updateReservation: (id: string, reservation: Partial<Reservation>) => void;
   deleteReservation: (id: string) => void;
+  confirmReservation: (id: string) => Promise<Reservation | null>;
   getReservationById: (id: string) => Reservation | undefined;
   getReservationsByProperty: (propertyId: string) => Reservation[];
   getReservationsByClient: (clientId: string) => Reservation[];
-  loadReservations: () => void;
+  loadReservations: () => Promise<void>;
   saveReservations: () => void;
 }
 
@@ -48,6 +49,41 @@ export const useReservationStore = create<ReservationStore>((set, get) => ({
 
   getReservationsByClient: (clientId) => {
     return get().reservations.filter((r) => r.clientId === clientId);
+  },
+
+  confirmReservation: async (id) => {
+    try {
+      const response = await fetch(`/api/reservations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'confirmed' }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to confirm reservation');
+      }
+
+      const data = await response.json();
+      const reservation = {
+        ...data.reservation,
+        checkIn: new Date(data.reservation.checkIn),
+        checkOut: new Date(data.reservation.checkOut),
+        createdAt: new Date(data.reservation.createdAt),
+        updatedAt: new Date(data.reservation.updatedAt),
+      };
+
+      // Update in state
+      set((state) => ({
+        reservations: state.reservations.map((r) =>
+          r.id === id ? reservation : r
+        ),
+      }));
+
+      return reservation;
+    } catch (error) {
+      console.error('Error confirming reservation:', error);
+      return null;
+    }
   },
 
   loadReservations: async () => {

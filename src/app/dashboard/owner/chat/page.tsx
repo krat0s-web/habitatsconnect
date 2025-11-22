@@ -19,7 +19,7 @@ export default function ChatPage() {
     loadMessages,
     getConversationsByOwnerId,
     getMessagesByConversationId,
-    addMessage,
+    sendMessage,
     updateConversation,
   } = useMessageStore();
 
@@ -28,6 +28,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -66,26 +67,25 @@ export default function ChatPage() {
     updateConversation(id, { unread: false });
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (newMessage.trim() && selectedConversation && user) {
-      const message: Message = {
-        id: Date.now().toString(),
-        conversationId: selectedConversation,
-        sender: 'owner',
-        senderName: `${user.firstName} ${user.lastName}`,
-        senderIds: user.id,
-        content: newMessage,
-        timestamp: new Date(),
-      };
-      addMessage(selectedConversation, message);
-      setMessages([...messages, message]);
-      setNewMessage('');
-
-      // Mettre à jour le dernier message de la conversation
-      updateConversation(selectedConversation, {
-        lastMessage: newMessage,
-        lastMessageTime: new Date(),
-      });
+      setSending(true);
+      try {
+        const message = await sendMessage(selectedConversation, user.id, newMessage);
+        if (message) {
+          setMessages([...messages, message]);
+          setNewMessage('');
+          updateConversation(selectedConversation, {
+            lastMessage: newMessage,
+            lastMessageTime: new Date(),
+          });
+        }
+      } catch (error) {
+        console.error('Error sending message:', error);
+        alert('Erreur lors de l\'envoi du message');
+      } finally {
+        setSending(false);
+      }
     }
   };
 
@@ -186,36 +186,37 @@ export default function ChatPage() {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-white to-slate-50">
               {messages.length > 0 ? (
-                messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${
-                      message.sender === 'owner' ? 'justify-end' : 'justify-start'
-                    }`}
-                  >
+                messages.map((message) => {
+                  const isOwnerMessage = message.senderId === user?.id;
+                  return (
                     <div
-                      className={`max-w-xs px-4 py-3 rounded-lg ${
-                        message.sender === 'owner'
-                          ? 'bg-primary-600 text-white rounded-br-none'
-                          : 'bg-slate-200 text-slate-900 rounded-bl-none'
-                      }`}
+                      key={message.id}
+                      className={`flex ${isOwnerMessage ? 'justify-end' : 'justify-start'}`}
                     >
-                      <p className="text-sm">{message.content}</p>
-                      <p
-                        className={`text-xs mt-1 ${
-                          message.sender === 'owner'
-                            ? 'text-primary-200'
-                            : 'text-slate-600'
+                      <div
+                        className={`max-w-xs px-4 py-3 rounded-lg ${
+                          isOwnerMessage
+                            ? 'bg-primary-600 text-white rounded-br-none'
+                            : 'bg-slate-200 text-slate-900 rounded-bl-none'
                         }`}
                       >
-                        {new Date(message.timestamp).toLocaleTimeString('fr-FR', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </p>
+                        <p className="text-sm">{message.text}</p>
+                        <p
+                          className={`text-xs mt-1 ${
+                            isOwnerMessage
+                              ? 'text-primary-200'
+                              : 'text-slate-600'
+                          }`}
+                        >
+                          {new Date(message.timestamp).toLocaleTimeString('fr-FR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="text-center py-12">
                   <p className="text-slate-500">Aucun message</p>
@@ -238,9 +239,10 @@ export default function ChatPage() {
               />
               <button
                 onClick={handleSendMessage}
-                className="px-6 py-3 bg-gradient-fluid text-white rounded-lg hover:shadow-lg transition font-semibold flex items-center gap-2"
+                disabled={sending || !newMessage.trim()}
+                className="px-6 py-3 bg-gradient-fluid text-white rounded-lg hover:shadow-lg transition font-semibold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <FaPaperPlane /> Envoyer
+                <FaPaperPlane /> {sending ? 'Envoi...' : 'Envoyer'}
               </button>
             </div>
           </>

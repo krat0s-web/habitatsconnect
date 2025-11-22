@@ -92,9 +92,8 @@ export default function CreatePropertyPage() {
         return;
       }
 
-      // Créer la nouvelle propriété avec l'objet complet
-      const newProperty = {
-        id: Math.random().toString(),
+      // Préparer les données pour l'API
+      const propertyData = {
         ...formData,
         amenities: formData.amenities
           .split(',')
@@ -102,36 +101,41 @@ export default function CreatePropertyPage() {
           .filter((a) => a),
         images: (images.length > 0 ? images : ['https://via.placeholder.com/500x300?text=Propriété']).map(
           (url, index) => ({
-            id: Math.random().toString(),
             url,
             alt: `Property image ${index + 1}`,
             order: index + 1,
           })
         ),
-        owner: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
         ownerId: user.id,
         isAvailable: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
       };
 
-      // Ajouter au store Zustand (sauvegarde automatiquement dans localStorage)
-      addProperty(newProperty);
+      // Envoyer à l'API Firestore
+      const response = await fetch('/api/properties', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(propertyData),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erreur lors de la création');
+      }
+
+      const { property } = await response.json();
+
+      // Ajouter au store Zustand pour la synchronisation locale
+      addProperty(property);
 
       setSuccess(true);
       setTimeout(() => {
         router.push('/dashboard/owner/properties');
       }, 1500);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur:', error);
+      alert(`Erreur: ${error.message}`);
     } finally {
       setLoading(false);
     }

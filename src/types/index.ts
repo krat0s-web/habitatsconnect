@@ -105,11 +105,10 @@ export type MessageSender = 'owner' | 'client';
 export interface Message {
   id: string;
   conversationId: string;
-  sender: MessageSender;
-  senderName: string;
-  senderIds: string;
-  content: string;
+  senderId: string;
+  text: string;
   timestamp: Date;
+  read?: boolean;
 }
 
 export interface Conversation {

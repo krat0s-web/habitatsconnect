@@ -3,16 +3,21 @@ import type { Transaction } from '@/types';
 
 interface TransactionStore {
   transactions: Transaction[];
+  loading: boolean;
+  error: string | null;
   addTransaction: (transaction: Transaction) => void;
   getTransactionsByOwnerId: (ownerId: string) => Transaction[];
   updateTransaction: (id: string, updates: Partial<Transaction>) => void;
   deleteTransaction: (id: string) => void;
-  loadTransactions: () => void;
+  loadTransactions: (ownerId: string) => Promise<void>;
   saveTransactions: () => void;
+  clearError: () => void;
 }
 
 export const useTransactionStore = create<TransactionStore>((set, get) => ({
   transactions: [],
+  loading: false,
+  error: null,
 
   addTransaction: (transaction) => {
     set((state) => {
@@ -60,54 +65,46 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
     });
   },
 
-  loadTransactions: async () => {
+  loadTransactions: async (ownerId: string) => {
+    if (!ownerId) {
+      console.warn('No owner ID provided for loading transactions');
+      return;
+    }
+
+    set({ loading: true, error: null });
     try {
-      const authStore = localStorage.getItem('auth-storage');
-      let currentUserId = '';
+      const response = await fetch(`/api/transactions?ownerId=${ownerId}`);
       
-      if (authStore) {
-        try {
-          const { state } = JSON.parse(authStore);
-          currentUserId = state.user?.id || '';
-        } catch (e) {
-          console.error('Error parsing auth store:', e);
-        }
-      }
-
-      if (!currentUserId) {
-        console.warn('No user ID found for loading transactions');
-        return;
-      }
-
-      const response = await fetch(`/api/transactions?ownerId=${currentUserId}`);
       if (response.ok) {
         const data = await response.json();
         const transactions = (data.transactions || []).map((t: any) => ({
           ...t,
-          id: t._id || t.id,
-          createdAt: new Date(t.createdAt),
-          updatedAt: new Date(t.updatedAt),
+          id: t.id || t._id,
+          createdAt: t.createdAt ? new Date(t.createdAt) : new Date(),
+          updatedAt: t.updatedAt ? new Date(t.updatedAt) : new Date(),
         }));
-        set({ transactions });
+        set({ transactions, loading: false });
       } else {
         throw new Error('Failed to load transactions');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading transactions:', error);
+      set({ error: error.message || 'Failed to load transactions', loading: false });
+      
       // Fallback to localStorage
       if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem('habitatsconnect_transactions');
-        if (stored) {
-          try {
+        try {
+          const stored = localStorage.getItem('habitatsconnect_transactions');
+          if (stored) {
             const transactions = JSON.parse(stored).map((t: any) => ({
               ...t,
-              createdAt: new Date(t.createdAt),
-              updatedAt: new Date(t.updatedAt),
+              createdAt: t.createdAt ? new Date(t.createdAt) : new Date(),
+              updatedAt: t.updatedAt ? new Date(t.updatedAt) : new Date(),
             }));
-            set({ transactions });
-          } catch (e) {
-            console.error('Fallback error:', e);
+            set({ transactions, loading: false });
           }
+        } catch (e) {
+          console.error('Fallback error:', e);
         }
       }
     }
@@ -122,4 +119,6 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
       );
     }
   },
+
+  clearError: () => set({ error: null }),
 }));

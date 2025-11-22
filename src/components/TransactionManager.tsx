@@ -1,33 +1,69 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useTransactionStore } from '@/store';
+import { useEffect, useState } from 'react';
+import { useAuthStore } from '@/store/authStore';
+import { useTransactionStore } from '@/store/transactionStore';
+import { usePropertyStore } from '@/store/propertyStore';
+import { useReservationStore } from '@/store/reservationStore';
 import type { TransactionStatus } from '@/types';
 
 /**
- * Composant qui gère automatiquement la conversion des transactions "pending" 
- * en "completed" après la date de checkout
+ * Composant qui gère automatiquement :
+ * 1. Le chargement des transactions pour les propriétaires
+ * 2. La conversion des transactions "pending" en "completed"
+ * 3. Le chargement des propriétés et réservations
  */
 export const TransactionManager: React.FC = () => {
-  const { transactions, updateTransaction, loadTransactions } = useTransactionStore();
+  const user = useAuthStore((state) => state.user);
+  const transactions = useTransactionStore((state) => state.transactions);
+  const updateTransaction = useTransactionStore((state) => state.updateTransaction);
+  const loadTransactions = useTransactionStore((state) => state.loadTransactions);
+  const loadProperties = usePropertyStore((state) => state.loadProperties);
+  const loadReservations = useReservationStore((state) => state.loadReservations);
+  const [mounted, setMounted] = useState(false);
 
+  // Chargement initial une fois le composant monté
   useEffect(() => {
-    // Charger les transactions
-    loadTransactions();
-  }, [loadTransactions]);
+    setMounted(true);
+  }, []);
 
+  // Charger les transactions pour le propriétaire connecté
   useEffect(() => {
-    // Vérifier toutes les transactions chaque minute
+    if (!mounted || !user?.id) return;
+
+    if (user.role === 'owner') {
+      loadTransactions(user.id).catch((error) => {
+        console.error('Failed to load transactions:', error);
+      });
+    }
+  }, [mounted, user?.id, user?.role, loadTransactions]);
+
+  // Charger les propriétés et réservations
+  useEffect(() => {
+    if (!mounted) return;
+
+    loadProperties().catch((error) => {
+      console.error('Failed to load properties:', error);
+    });
+
+    loadReservations().catch((error) => {
+      console.error('Failed to load reservations:', error);
+    });
+  }, [mounted, loadProperties, loadReservations]);
+
+  // Vérifier et mettre à jour les transactions pending
+  useEffect(() => {
+    if (!mounted || transactions.length === 0) return;
+
     const interval = setInterval(() => {
       const now = new Date();
 
       transactions.forEach((transaction) => {
-        // Si la transaction est en attente et sa date est passée
         if (
           transaction.status === 'pending' &&
+          transaction.date &&
           new Date(transaction.date) <= now
         ) {
-          // Convertir en "completed"
           updateTransaction(transaction.id, { 
             status: 'completed' as TransactionStatus 
           });
@@ -36,8 +72,8 @@ export const TransactionManager: React.FC = () => {
     }, 60000); // Vérifier toutes les minutes
 
     return () => clearInterval(interval);
-  }, [transactions, updateTransaction]);
+  }, [mounted, transactions, updateTransaction]);
 
-  // Ce composant ne rend rien, il gère juste la logique
   return null;
 };
+

@@ -12,120 +12,72 @@ import {
   FaHourglass,
 } from 'react-icons/fa';
 import Link from 'next/link';
-import { useAuthStore, useTransactionStore } from '@/store';
-import type { Reservation, Transaction } from '@/types';
+import { useAuthStore, useReservationStore } from '@/store';
+import type { Reservation } from '@/types';
 
 export default function OwnerReservationsPage() {
   const { user } = useAuthStore();
-  const { addTransaction } = useTransactionStore();
-  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const { reservations, loadReservations, confirmReservation } = useReservationStore();
   const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'completed'>('pending');
+  const [loading, setLoading] = useState(false);
+  const [ownerReservations, setOwnerReservations] = useState<Reservation[]>([]);
 
   useEffect(() => {
-    // Charger les réservations des propriétés du propriétaire
-    if (typeof window !== 'undefined' && user) {
-      const stored = localStorage.getItem('habitatsconnect_reservations');
-      if (stored) {
-        try {
-          const allReservations = JSON.parse(stored);
-          const propertiesStored = localStorage.getItem('habitatsconnect_properties');
-          const properties = propertiesStored ? JSON.parse(propertiesStored) : [];
+    // Charger les réservations au montage
+    loadReservations();
+  }, [loadReservations]);
 
-          // Filtrer les propriétés du propriétaire
-          const ownerPropertyIds = properties
-            .filter((p: any) => p.ownerId === user.id)
-            .map((p: any) => p.id);
-
-          // Filtrer les réservations pour ces propriétés
-          const ownerReservations = allReservations.filter((r: any) =>
-            ownerPropertyIds.includes(r.propertyId)
-          );
-
-          setReservations(ownerReservations);
-        } catch (error) {
-          console.error('Erreur lors du chargement des réservations:', error);
-        }
-      }
+  useEffect(() => {
+    // Filtrer les réservations pour les propriétés du propriétaire
+    if (user?.id) {
+      const filtered = reservations.filter((r) => {
+        // Check if this reservation is for a property owned by the user
+        return r.property?.ownerId === user.id;
+      });
+      setOwnerReservations(filtered);
     }
-  }, [user]);
+  }, [reservations, user?.id]);
 
-  const filteredReservations = reservations.filter((r) => {
+  const filteredReservations = ownerReservations.filter((r) => {
     if (filter === 'all') return true;
     return r.status === filter;
   });
 
-  const handleConfirm = (id: string) => {
-    const updated = reservations.map((r) =>
-      r.id === id ? { ...r, status: 'confirmed' as const } : r
-    );
-    setReservations(updated);
-
-    // Mettre à jour localStorage
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('habitatsconnect_reservations');
-      if (stored) {
-        const allReservations = JSON.parse(stored);
-        const updatedAll = allReservations.map((r: any) =>
-          r.id === id ? { ...r, status: 'confirmed' } : r
-        );
-        localStorage.setItem('habitatsconnect_reservations', JSON.stringify(updatedAll));
-      }
-    }
-
-    // Créer les transactions pour le paiement
-    const reservation = reservations.find((r) => r.id === id);
-    if (reservation && user) {
-      // Transaction 1: Dépôt de garantie (reçu immédiatement)
-      const depositTransaction: Transaction = {
-        id: Math.random().toString(),
-        ownerId: user.id,
-        type: 'income',
-        description: `Dépôt de garantie - ${reservation.property?.title}`,
-        amount: reservation.depositAmount,
-        status: 'completed',
-        date: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      addTransaction(depositTransaction);
-
-      // Transaction 2: Reste du paiement (après le checkout)
-      const remainingAmount = reservation.totalPrice - reservation.depositAmount;
-      if (remainingAmount > 0) {
-        const balanceTransaction: Transaction = {
-          id: Math.random().toString(),
-          ownerId: user.id,
-          type: 'income',
-          description: `Solde - ${reservation.property?.title} (après séjour)`,
-          amount: remainingAmount,
-          status: 'pending', // En attente jusqu'à la fin du séjour
-          date: new Date(reservation.checkOut), // Date du checkout
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-
-        addTransaction(balanceTransaction);
-      }
+  const handleConfirm = async (id: string) => {
+    setLoading(true);
+    try {
+      await confirmReservation(id);
+      // Recharger les réservations
+      await loadReservations();
+    } catch (error) {
+      console.error('Error confirming reservation:', error);
+      alert('Erreur lors de la confirmation');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleReject = (id: string) => {
-    const updated = reservations.map((r) =>
-      r.id === id ? { ...r, status: 'cancelled' as const } : r
-    );
-    setReservations(updated);
+  const handleReject = async (id: string) => {
+    setLoading(true);
+    try {
+      // Update status to cancelled via API
+      const response = await fetch(`/api/reservations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled' }),
+      });
 
-    // Mettre à jour localStorage
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('habitatsconnect_reservations');
-      if (stored) {
-        const allReservations = JSON.parse(stored);
-        const updatedAll = allReservations.map((r: any) =>
-          r.id === id ? { ...r, status: 'cancelled' } : r
-        );
-        localStorage.setItem('habitatsconnect_reservations', JSON.stringify(updatedAll));
+      if (!response.ok) {
+        throw new Error('Failed to reject reservation');
       }
+
+      // Recharger les réservations
+      await loadReservations();
+    } catch (error) {
+      console.error('Error rejecting reservation:', error);
+      alert('Erreur lors du rejet');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -305,15 +257,17 @@ export default function OwnerReservationsPage() {
                     <div className="flex flex-col gap-2">
                       <button
                         onClick={() => handleConfirm(reservation.id)}
-                        className="flex items-center justify-center gap-2 px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition font-semibold text-sm"
+                        disabled={loading}
+                        className="flex items-center justify-center gap-2 px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <FaCheck /> Confirmer
+                        <FaCheck /> {loading ? 'Traitement...' : 'Confirmer'}
                       </button>
                       <button
                         onClick={() => handleReject(reservation.id)}
-                        className="flex items-center justify-center gap-2 px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-semibold text-sm"
+                        disabled={loading}
+                        className="flex items-center justify-center gap-2 px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <FaTimes /> Refuser
+                        <FaTimes /> {loading ? 'Traitement...' : 'Refuser'}
                       </button>
                     </div>
                   )}

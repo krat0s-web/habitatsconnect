@@ -20,15 +20,17 @@ export default function TreasuryPage() {
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
 
   useEffect(() => {
-    loadTransactions();
-  }, []);
+    if (user?.id) {
+      loadTransactions(user.id);
+    }
+  }, [user?.id, loadTransactions]);
 
   useEffect(() => {
     if (user?.id) {
       const ownerTransactions = getTransactionsByOwnerId(user.id);
       setDisplayedTransactions(ownerTransactions);
     }
-  }, [user, transactions, getTransactionsByOwnerId]);
+  }, [user?.id, transactions, getTransactionsByOwnerId]);
 
   const filteredTransactions = displayedTransactions.filter((t) => {
     if (filter === 'all') return true;

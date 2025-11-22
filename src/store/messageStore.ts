@@ -6,11 +6,12 @@ interface MessageStore {
   messages: Record<string, Message[]>;
   addConversation: (conversation: Conversation) => void;
   addMessage: (conversationId: string, message: Message) => void;
+  sendMessage: (conversationId: string, senderId: string, text: string) => Promise<Message | null>;
   getConversationsByOwnerId: (ownerId: string) => Conversation[];
   getMessagesByConversationId: (conversationId: string) => Message[];
   updateConversation: (id: string, updates: Partial<Conversation>) => void;
   loadConversations: () => void;
-  loadMessages: () => void;
+  loadMessages: () => Promise<void>;
   saveConversations: () => void;
   saveMessages: () => void;
 }
@@ -54,6 +55,33 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
       }
       return { messages: newMessages };
     });
+  },
+
+  sendMessage: async (conversationId, senderId, text) => {
+    try {
+      const response = await fetch('/api/messages/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId, senderId, text }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
+
+      const data = await response.json();
+      const message = {
+        ...data.message,
+        timestamp: new Date(data.message.timestamp),
+      };
+
+      // Add to local state
+      get().addMessage(conversationId, message);
+      return message;
+    } catch (error) {
+      console.error('Error sending message:', error);
+      return null;
+    }
   },
 
   getConversationsByOwnerId: (ownerId) => {
@@ -142,22 +170,47 @@ export const useMessageStore = create<MessageStore>((set, get) => ({
     }
   },
 
-  loadMessages: () => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('habitatsconnect_messages');
-      if (stored) {
+  loadMessages: async () => {
+    try {
+      const { conversations } = get();
+      const messages: Record<string, Message[]> = {};
+
+      // Load messages for each conversation from Firestore API
+      for (const conv of conversations) {
         try {
-          const messagesData = JSON.parse(stored);
-          const messages: Record<string, Message[]> = {};
-          for (const [convId, msgs] of Object.entries(messagesData)) {
-            messages[convId] = (msgs as any[]).map((m: any) => ({
+          const response = await fetch(`/api/messages/send?conversationId=${conv.id}`);
+          if (response.ok) {
+            const data = await response.json();
+            messages[conv.id] = (data.messages || []).map((m: any) => ({
               ...m,
               timestamp: new Date(m.timestamp),
             }));
           }
-          set({ messages });
         } catch (error) {
-          console.error('Error loading messages:', error);
+          console.error(`Error loading messages for conversation ${conv.id}:`, error);
+        }
+      }
+
+      set({ messages });
+    } catch (error) {
+      console.error('Error loading messages:', error);
+      // Fallback to localStorage
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('habitatsconnect_messages');
+        if (stored) {
+          try {
+            const messagesData = JSON.parse(stored);
+            const messages: Record<string, Message[]> = {};
+            for (const [convId, msgs] of Object.entries(messagesData)) {
+              messages[convId] = (msgs as any[]).map((m: any) => ({
+                ...m,
+                timestamp: new Date(m.timestamp),
+              }));
+            }
+            set({ messages });
+          } catch (e) {
+            console.error('Fallback error:', e);
+          }
         }
       }
     }

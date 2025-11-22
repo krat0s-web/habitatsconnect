@@ -62,7 +62,7 @@ const mockProperty: Property = {
 
 export default function PropertyPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const { getPropertyById, loadProperties, properties } = usePropertyStore();
+  const { getPropertyById, loadProperties, properties, loading: propertiesLoading } = usePropertyStore();
   const { user } = useAuthStore();
   const { addConversation, loadConversations, conversations } = useMessageStore();
   const { reservations, loadReservations } = useReservationStore();
@@ -71,22 +71,29 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     // Charger les propriétés et les réservations depuis le store
-    loadProperties();
-    loadReservations();
+    const fetchData = async () => {
+      setLoading(true);
+      await loadProperties();
+      await loadReservations();
+      loadConversations();
+      setLoading(false);
+    };
+    fetchData();
   }, []);
 
   useEffect(() => {
     // Une fois les propriétés chargées, chercher celle correspondant à l'ID
-    const foundProperty = getPropertyById(params.id);
-    if (foundProperty) {
-      setProperty(foundProperty);
-    } else if (properties.length === 0) {
-      // Si aucune propriété dans le store et aucune trouvée, utiliser mock
-      setProperty(mockProperty);
+    if (!propertiesLoading && properties.length > 0) {
+      const foundProperty = getPropertyById(params.id);
+      if (foundProperty) {
+        setProperty(foundProperty);
+      } else {
+        // Si la propriété n'est pas trouvée, utiliser mock seulement en dernier recours
+        console.warn(`Property with ID ${params.id} not found`);
+        setProperty(mockProperty);
+      }
     }
-    setLoading(false);
-    loadConversations();
-  }, [params.id, getPropertyById, loadConversations, properties]);
+  }, [params.id, getPropertyById, properties, propertiesLoading]);
 
   const handleReserve = (reservation: Partial<Reservation>) => {
     if (!user) {

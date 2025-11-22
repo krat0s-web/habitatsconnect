@@ -11,7 +11,7 @@ interface PropertyStore {
   updateProperty: (id: string, property: Partial<Property>) => void;
   deleteProperty: (id: string) => void;
   getPropertyById: (id: string) => Property | undefined;
-  loadProperties: () => void;
+  loadProperties: () => Promise<Property[]>;
 }
 
 export const usePropertyStore = create<PropertyStore>()(persist(
@@ -62,6 +62,7 @@ export const usePropertyStore = create<PropertyStore>()(persist(
         if (response.ok) {
           const data = await response.json();
           set({ properties: data.properties || [], loading: false });
+          return data.properties || [];
         } else {
           throw new Error('Failed to load properties');
         }
@@ -75,11 +76,13 @@ export const usePropertyStore = create<PropertyStore>()(persist(
             if (stored) {
               const properties = JSON.parse(stored);
               set({ properties });
+              return properties;
             }
           } catch (e) {
             console.error('Fallback error:', e);
           }
         }
+        return [];
       }
     },
   }),
