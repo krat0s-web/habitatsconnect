@@ -1,0 +1,40 @@
+{
+  "name": "habitats-connect",
+  "version": "1.0.0",
+  "description": "Modern property management platform - Airbnb-like application",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,scss,md}\""
+  },
+  "dependencies": {
+    "autoprefixer": "^10.4.16",
+    "axios": "^1.6.0",
+    "date-fns": "^2.30.0",
+    "firebase": "^12.6.0",
+    "firebase-admin": "^13.6.0",
+    "next": "^14.0.0",
+    "next-auth": "^4.24.0",
+    "postcss": "^8.4.31",
+    "react": "^18.2.0",
+    "react-calendar": "^4.2.1",
+    "react-dom": "^18.2.0",
+    "react-icons": "^4.11.0",
+    "react-image-gallery": "^1.2.11",
+    "tailwindcss": "^3.3.0",
+    "zustand": "^4.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.9.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "eslint": "^8.51.0",
+    "eslint-config-next": "^14.0.0",
+    "firebase-tools": "^14.26.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.2.0"
+  }
+}
