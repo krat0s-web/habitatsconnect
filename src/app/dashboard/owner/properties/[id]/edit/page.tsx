@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore, usePropertyStore } from '@/store';
 import { PRICE_SYMBOL } from '@/lib/static';
-import type { Property } from '@/types';
+import type { Property, PropertyImage } from '@/types';
 
 interface PropertyForm {
   title: string;
@@ -39,7 +39,7 @@ export default function EditPropertyPage() {
   });
 
   const [imageUrl, setImageUrl] = useState('');
-  const [images, setImages] = useState<string[]>([]);
+  const [images, setImages] = useState<PropertyImage[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -67,7 +67,7 @@ export default function EditPropertyPage() {
         area: foundProperty.area,
         amenities: foundProperty.amenities.join(', '),
       });
-      setImages(foundProperty.images.map(img => img.url));
+      setImages(foundProperty.images || []);
     }
   }, [propertyId, properties]);
 
@@ -102,7 +102,13 @@ export default function EditPropertyPage() {
         return;
       }
 
-      setImages([...images, imageUrl]);
+      const newImage: PropertyImage = {
+        id: crypto.randomUUID(),
+        url: imageUrl,
+        alt: `Property image ${images.length + 1}`,
+        order: images.length + 1,
+      };
+      setImages([...images, newImage]);
       setImageUrl('');
       setImageError('');
     } catch {
@@ -142,14 +148,14 @@ export default function EditPropertyPage() {
           .split(',')
           .map((a) => a.trim())
           .filter((a) => a),
-        images: (images.length > 0
+        images: images.length > 0
           ? images
-          : ['https://via.placeholder.com/500x300?text=Propriété']
-        ).map((url, index) => ({
-          url,
-          alt: `Property image ${index + 1}`,
-          order: index + 1,
-        })),
+          : [{
+              id: 'default',
+              url: 'https://via.placeholder.com/500x300?text=Propriété',
+              alt: 'Default property image',
+              order: 1,
+            }],
       };
 
       // Utiliser la fonction updateProperty du store
@@ -419,10 +425,10 @@ export default function EditPropertyPage() {
             {images.length > 0 && (
               <div className="gap-4 grid grid-cols-2 md:grid-cols-4">
                 {images.map((image, index) => (
-                  <div key={index} className="group relative">
+                  <div key={image.id} className="group relative">
                     <img
-                      src={image}
-                      alt={`Image ${index + 1}`}
+                      src={image.url}
+                      alt={image.alt}
                       className="rounded-lg w-full h-24 object-cover"
                     />
                     <button

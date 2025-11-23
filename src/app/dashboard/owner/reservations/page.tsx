@@ -96,6 +96,17 @@ export default function OwnerReservationsPage() {
       setLoading(false);
     }
   };
+  const handleReject = async (id: string) => {
+    setLoading(true);
+    try {
+      await updateReservation(id, { status: 'rejected' });
+      alert('Réservation rejetée');
+    } catch (error) {
+      console.error('Error rejecting reservation:', error);
+      alert(`Erreur lors du rejet: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+    } finally {
+      setLoading(false);
+    }
   const handleReleaseDeposit = async (reservation: Reservation) => {
     if (!user?.id) return;
 
@@ -363,4 +374,5 @@ export default function OwnerReservationsPage() {
       )}
     </div>
   );
+}
 }

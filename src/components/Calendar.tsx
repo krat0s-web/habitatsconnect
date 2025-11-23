@@ -56,8 +56,8 @@ export default function Calendar({
           // CheckIn conversion
           if (reservation.checkIn instanceof Date) {
             checkInDate = new Date(reservation.checkIn);
-          } else if (reservation.checkIn?.toDate && typeof reservation.checkIn.toDate === 'function') {
-            checkInDate = reservation.checkIn.toDate();
+          } else if ((reservation.checkIn as any)?.toDate && typeof (reservation.checkIn as any).toDate === 'function') {
+            checkInDate = (reservation.checkIn as any).toDate();
           } else if (typeof reservation.checkIn === 'object' && reservation.checkIn !== null && 'seconds' in reservation.checkIn) {
             checkInDate = new Date((reservation.checkIn as any).seconds * 1000);
           } else if (typeof reservation.checkIn === 'string') {
@@ -70,8 +70,8 @@ export default function Calendar({
           // CheckOut conversion
           if (reservation.checkOut instanceof Date) {
             checkOutDate = new Date(reservation.checkOut);
-          } else if (reservation.checkOut?.toDate && typeof reservation.checkOut.toDate === 'function') {
-            checkOutDate = reservation.checkOut.toDate();
+          } else if ((reservation.checkOut as any)?.toDate && typeof (reservation.checkOut as any).toDate === 'function') {
+            checkOutDate = (reservation.checkOut as any).toDate();
           } else if (typeof reservation.checkOut === 'object' && reservation.checkOut !== null && 'seconds' in reservation.checkOut) {
             checkOutDate = new Date((reservation.checkOut as any).seconds * 1000);
           } else if (typeof reservation.checkOut === 'string') {

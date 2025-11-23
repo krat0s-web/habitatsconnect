@@ -30,7 +30,7 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
       setLoading(false);
     };
     fetchData();
-  }, []);
+  }, [loadConversations, loadProperties, loadReservations]);
 
   useEffect(() => {
     // Une fois les propriétés chargées, chercher celle correspondant à l'ID
@@ -137,11 +137,15 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
     }
 
     // Vérifier si une conversation existe déjà
-    let existingConversation = conversations.find(
+    const existingConversationFromFind = conversations.find(
       (c) => c.clientId === user.id && c.ownerId === property.ownerId
     );
 
-    if (!existingConversation) {
+    let existingConversation: Conversation;
+
+    if (existingConversationFromFind) {
+      existingConversation = existingConversationFromFind;
+    } else {
       // Créer une nouvelle conversation via l'API
       try {
         console.log('Creating conversation via API...');
@@ -157,10 +161,14 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
 
         if (response.ok) {
           const data = await response.json();
-          existingConversation = data.conversation;
-          console.log('Conversation created:', existingConversation);
-          // Ajouter à l'état local
-          addConversation(existingConversation);
+          if (data.conversation) {
+            existingConversation = data.conversation;
+            console.log('Conversation created:', existingConversation);
+            // Ajouter à l'état local
+            addConversation(existingConversation);
+          } else {
+            throw new Error('Conversation not created');
+          }
         } else {
           throw new Error('Failed to create conversation');
         }

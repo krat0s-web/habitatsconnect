@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { FaComments, FaPaperPlane, FaEllipsisH, FaSearch } from 'react-icons/fa';
 import { useAuthStore, useMessageStore } from '@/store';
@@ -58,7 +58,7 @@ export default function ChatPage() {
       // Unsubscribe from all message listeners
       Object.keys(messages).forEach((convId) => unsubscribeFromMessages(convId));
     };
-  }, [user?.id]);
+  }, [user?.id, getConversationsByOwnerId, subscribeToConversations, unsubscribeFromConversations, unsubscribeFromMessages, messages, selectedConversation, subscribeToMessages]);
 
   // Handle conversation selection from URL parameter
   useEffect(() => {
@@ -79,7 +79,7 @@ export default function ChatPage() {
   };
 
   const selectedConv = conversations.find((c) => c.id === selectedConversation);
-  const conversationMessages = selectedConversation ? messages[selectedConversation] || [] : [];
+  const conversationMessages = useMemo(() => selectedConversation ? messages[selectedConversation] || [] : [], [selectedConversation, messages]);
   const filteredConversations = conversations.filter((c) =>
     c.clientName.toLowerCase().includes(searchQuery.toLowerCase())
   );
