@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import type { Reservation } from '@/types';
 
@@ -37,7 +37,7 @@ export default function Calendar({
   }, [propertyId, reservations]);
 
   // Obtenir toutes les dates réservées pour cette propriété
-  const getReservedDates = () => {
+  const getReservedDates = useCallback(() => {
     const reserved = new Set<string>();
     const propertyReservations = reservations.filter((r) => r.propertyId === propertyId);
 
@@ -110,14 +110,14 @@ export default function Calendar({
 
     console.log('Total reserved dates:', Array.from(reserved));
     return reserved;
-  };
+  }, [reservations, propertyId]);
 
   // Recalculate reserved dates when reservations change
   useEffect(() => {
     console.log('Recalculating reserved dates...');
     const newReservedDates = getReservedDates();
     setReservedDates(newReservedDates);
-  }, [reservations, propertyId]);
+  }, [getReservedDates]);
 
   const isDateReserved = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];

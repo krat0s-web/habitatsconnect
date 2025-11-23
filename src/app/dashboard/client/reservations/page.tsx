@@ -134,7 +134,7 @@ export default function ClientReservationsPage() {
               visible: { opacity: 1, y: 0 },
             }}
             transition={{ duration: 0.5 }}
-            whileHover={{ y: -4, shadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}
+            whileHover={{ y: -4, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}
           >
             <div className="gap-6 grid grid-cols-1 md:grid-cols-4">
               {/* Property Info */}

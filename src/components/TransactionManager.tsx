@@ -49,7 +49,8 @@ export const TransactionManager: React.FC = () => {
     loadReservations().catch((error) => {
       console.error('Failed to load reservations:', error);
     });
-  }, [mounted, loadProperties, loadReservations]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted]);
 
   // Vérifier et mettre à jour les transactions pending
   useEffect(() => {

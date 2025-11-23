@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FaStar,
@@ -38,11 +38,7 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({ propertyId, ownerI
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // Load reviews
-  useEffect(() => {
-    loadReviews();
-  }, [propertyId]);
-
-  const loadReviews = async () => {
+  const loadReviews = useCallback(async () => {
     try {
       console.log('Loading reviews for propertyId:', propertyId);
       
@@ -97,7 +93,12 @@ export const ReviewSection: React.FC<ReviewSectionProps> = ({ propertyId, ownerI
     } finally {
       setLoading(false);
     }
-  };
+  }, [propertyId]);
+
+  // Load reviews when component mounts or propertyId changes
+  useEffect(() => {
+    loadReviews();
+  }, [loadReviews]);
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
