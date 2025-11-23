@@ -11,6 +11,7 @@ import {
   FaHeart,
   FaLock,
   FaCalendarAlt,
+  FaChartLine,
 } from 'react-icons/fa';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -27,6 +28,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
   // Menu pour les propriétaires
   const ownerMenuItems = [
+    { href: '/dashboard/owner/analytics', label: 'Analyses', icon: FaChartLine },
     { href: '/dashboard/owner/properties', label: 'Mes Annonces', icon: FaBuilding },
     { href: '/dashboard/owner/reservations', label: 'Réservations', icon: FaCalendarAlt },
     { href: '/dashboard/owner/profile', label: 'Mon Profil', icon: FaUser },
@@ -49,10 +51,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const displayName = user ? `${user.firstName} ${user.lastName}` : 'Utilisateur';
   const dashboardTitle = user?.role === 'owner' ? 'Dashboard Propriétaire' : 'Mon Dashboard';
   if (!mounted) {
-    return null;
+    return (
+      <div className="flex justify-center items-center bg-slate-50 h-screen">
+        <div className="text-center">
+          <div className="border-primary-600 mx-auto mb-4 border-4 border-t-transparent rounded-full w-16 h-16 animate-spin"></div>
+          <p className="text-slate-600">Chargement...</p>
+        </div>
+      </div>
+    );
   }
   return (
-    <div className="flex items-stretch bg-slate-50 h-full overflow-hidden">
+    <div className="flex items-stretch bg-slate-50 h-full overflow-hidden" suppressHydrationWarning>
       {/* Sidebar */}
       <AnimatePresence mode="wait">
         <motion.aside

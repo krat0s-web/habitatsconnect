@@ -2,63 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { PropertyDetail, Loading } from '@/components';
+import { PropertyDetail, Loading, ReviewSection } from '@/components';
 import { usePropertyStore, useAuthStore, useMessageStore, useReservationStore } from '@/store';
 import type { Property, Reservation, Conversation, Message } from '@/types';
-
-const mockProperty: Property = {
-  id: '1',
-  title: 'Villa Luxe en Bord de Mer',
-  description:
-    'Magnifique villa avec piscine et vue panoramique sur la mer Méditerranée. Cette propriété offre un confort suprême avec des équipements modernes et un design élégant.',
-  type: 'villa',
-  price: 250,
-  location: "Côte d'Azur",
-  address: '123 Rue de la Plage',
-  bedrooms: 4,
-  bathrooms: 3,
-  area: 320,
-  amenities: ['WiFi', 'Parking', 'Piscine', 'Cuisine', 'Jardin', 'Climatisation'],
-  images: [
-    {
-      id: '1',
-      url: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=1200&q=80',
-      alt: 'Villa entrance',
-      order: 1,
-    },
-    {
-      id: '2',
-      url: 'https://images.unsplash.com/photo-1570129477492-45a003537e1f?w=1200&q=80',
-      alt: 'Pool view',
-      order: 2,
-    },
-    {
-      id: '3',
-      url: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1200&q=80',
-      alt: 'Living room',
-      order: 3,
-    },
-    {
-      id: '4',
-      url: 'https://images.unsplash.com/photo-1600585152220-90363fe7e115?w=1200&q=80',
-      alt: 'Bedroom',
-      order: 4,
-    },
-  ],
-  owner: {
-    id: '1',
-    email: 'owner1@example.com',
-    firstName: 'Jean',
-    lastName: 'Dupont',
-    role: 'owner',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  ownerId: '1',
-  isAvailable: true,
-  createdAt: new Date(),
-  updatedAt: new Date(),
-};
 
 export default function PropertyPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -70,7 +16,7 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
   } = usePropertyStore();
   const { user } = useAuthStore();
   const { addConversation, loadConversations, conversations } = useMessageStore();
-  const { reservations, loadReservations, addReservation } = useReservationStore();
+  const { reservations, loadReservations } = useReservationStore();
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -93,9 +39,8 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
       if (foundProperty) {
         setProperty(foundProperty);
       } else {
-        // Si la propriété n'est pas trouvée, utiliser mock seulement en dernier recours
         console.warn(`Property with ID ${params.id} not found`);
-        setProperty(mockProperty);
+        setProperty(null);
       }
     }
   }, [params.id, getPropertyById, properties, propertiesLoading]);
@@ -158,8 +103,9 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
       const data = await response.json();
       console.log('Reservation created:', data);
 
-      // Ajouter la réservation au store
-      addReservation(data.reservation);
+      // La réservation est déjà créée dans Firestore via l'API
+      // Elle sera automatiquement synchronisée via le listener en temps réel
+      // Pas besoin d'appeler addReservation ici
 
       alert('Réservation créée avec succès! Le propriétaire doit la confirmer.');
       router.push('/dashboard/client/reservations');
@@ -239,55 +185,7 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
       }
     }
 
-    // Créer un message par défaut en français
-    const defaultMessageText = `Bonjour, je suis intéressé par l'annonce "${property.title}". Je souhaite prendre des informations supplémentaires et organiser une visite. Pouvez-vous me contacter ?`;
-
-    // Envoyer le message via l'API pour qu'il soit persisté
-    const { sendMessage } = useMessageStore.getState();
-    try {
-      const sentMessage = await sendMessage(existingConversation.id, user.id, defaultMessageText);
-      if (sentMessage) {
-        // Message envoyé avec succès, mettre à jour la conversation
-        const { updateConversation } = useMessageStore.getState();
-        updateConversation(existingConversation.id, {
-          lastMessage: defaultMessageText,
-          lastMessageTime: sentMessage.timestamp,
-          unread: true,
-        });
-      }
-    } catch (error) {
-      console.error('Error sending default message:', error);
-      // Fallback: ajouter le message localement si l'API échoue
-      const defaultMessage: Message = {
-        id: Math.random().toString(),
-        conversationId: existingConversation.id,
-        senderId: user.id,
-        text: defaultMessageText,
-        timestamp: new Date(),
-        read: false,
-      };
-
-      const { addMessage, updateConversation } = useMessageStore.getState();
-      addMessage(existingConversation.id, defaultMessage);
-      updateConversation(existingConversation.id, {
-        lastMessage: defaultMessageText,
-        lastMessageTime: defaultMessage.timestamp,
-        unread: true,
-      });
-
-      // Sauvegarder le message dans localStorage
-      if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem('habitatsconnect_messages');
-        const allMessages = stored ? JSON.parse(stored) : {};
-        if (!allMessages[existingConversation.id]) {
-          allMessages[existingConversation.id] = [];
-        }
-        allMessages[existingConversation.id].push(defaultMessage);
-        localStorage.setItem('habitatsconnect_messages', JSON.stringify(allMessages));
-      }
-    }
-
-    // Rediriger vers le chat avec la conversation sélectionnée
+    // Rediriger vers le chat avec la conversation sélectionnée (SANS envoyer de message)
     router.push(`/dashboard/client/chat?conversation=${existingConversation.id}`);
   };
 
@@ -303,13 +201,23 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
   const propertyReservations = reservations.filter((r) => r.propertyId === property.id);
 
   return (
-    <PropertyDetail
-      property={property}
-      onReserve={handleReserve}
-      onContact={handleContact}
-      isOwner={user?.id === property.ownerId}
-      currentUserId={user?.id}
-      reservations={propertyReservations}
-    />
+    <div>
+      <PropertyDetail
+        property={property}
+        onReserve={handleReserve}
+        onContact={handleContact}
+        isOwner={user?.id === property.ownerId}
+        currentUserId={user?.id}
+        reservations={propertyReservations}
+      />
+      
+      {/* Review Section */}
+      <div className="mx-auto px-4 sm:px-6 lg:px-8 pb-12 max-w-7xl">
+        <ReviewSection 
+          propertyId={property.id} 
+          ownerId={property.ownerId} 
+        />
+      </div>
+    </div>
   );
 }

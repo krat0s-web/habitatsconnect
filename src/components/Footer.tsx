@@ -10,8 +10,15 @@ import {
 } from 'react-icons/fa';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
-import { Button } from '@/components/ui/button';
+import { useHydration } from '@/hooks/useHydration';
+
 export const Footer = () => {
+  const isHydrated = useHydration();
+  
+  if (!isHydrated) {
+    return null;
+  }
+  
   return (
     <footer className="bg-gradient-to-br from-slate-900 to-slate-800 text-white">
       <div className="mx-auto px-4 sm:px-6 lg:px-8 py-12 max-w-7xl">
@@ -25,46 +32,18 @@ export const Footer = () => {
               Plateforme moderne de gestion immobilière et de réservation.
             </p>
             <div className="flex gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-white hover:text-primary-400"
-                asChild
-              >
-                <a href="#">
-                  <FaFacebook size={20} />
-                </a>
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-white hover:text-primary-400"
-                asChild
-              >
-                <a href="#">
-                  <FaTwitter size={20} />
-                </a>
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-white hover:text-primary-400"
-                asChild
-              >
-                <a href="#">
-                  <FaInstagram size={20} />
-                </a>
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-white hover:text-primary-400"
-                asChild
-              >
-                <a href="#">
-                  <FaLinkedin size={20} />
-                </a>
-              </Button>
+              <a href="#" className="p-2 text-white hover:text-primary-400 transition-colors">
+                <FaFacebook size={20} />
+              </a>
+              <a href="#" className="p-2 text-white hover:text-primary-400 transition-colors">
+                <FaTwitter size={20} />
+              </a>
+              <a href="#" className="p-2 text-white hover:text-primary-400 transition-colors">
+                <FaInstagram size={20} />
+              </a>
+              <a href="#" className="p-2 text-white hover:text-primary-400 transition-colors">
+                <FaLinkedin size={20} />
+              </a>
             </div>
           </div>
           {/* Quick Links */}

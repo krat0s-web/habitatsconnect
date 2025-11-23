@@ -57,5 +57,13 @@ service cloud.firestore {
       allow update: if false; // Transactions should be immutable
       allow delete: if false;
     }
+
+    // Reviews collection
+    match /reviews/{reviewId} {
+      allow read: if true; // Public read access for reviews
+      allow create: if isAuthenticated(); // Anyone authenticated can create a review
+      allow update: if isAuthenticated() && resource.data.clientId == request.auth.uid; // Only the author can update
+      allow delete: if isAuthenticated() && resource.data.clientId == request.auth.uid; // Only the author can delete
+    }
   }
 }

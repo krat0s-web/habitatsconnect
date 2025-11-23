@@ -38,15 +38,13 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
   addTransaction: async (transaction) => {
     try {
       const transactionsRef = collection(db, 'transactions');
-      const docRef = await addDoc(transactionsRef, {
+      await addDoc(transactionsRef, {
         ...transaction,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
 
-      set((state) => ({
-        transactions: [...state.transactions, { ...transaction, id: docRef.id }],
-      }));
+      // Removed local add to prevent duplicates - subscription will update
     } catch (error: any) {
       console.error('Error adding transaction:', error);
       set({ error: error.message });
@@ -110,8 +108,9 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
         transactions.push({
           id: doc.id,
           ...data,
-          createdAt: data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt),
-          updatedAt: data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt),
+          date: data.date?.toDate ? data.date.toDate() : (data.date instanceof Date ? data.date : new Date(data.date)),
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt)),
+          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : (data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt)),
         } as Transaction);
       });
 
@@ -140,8 +139,9 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
           transactions.push({
             id: doc.id,
             ...data,
-            createdAt: data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt),
-            updatedAt: data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt),
+            date: data.date?.toDate ? data.date.toDate() : (data.date instanceof Date ? data.date : new Date(data.date)),
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt)),
+            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : (data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt)),
           } as Transaction);
         });
         set({ transactions, loading: false });

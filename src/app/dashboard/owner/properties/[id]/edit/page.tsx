@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FaSave, FaTimes, FaImage } from 'react-icons/fa';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/store';
+import { useRouter, useParams } from 'next/navigation';
+import { useAuthStore, usePropertyStore } from '@/store';
 import { PRICE_SYMBOL } from '@/lib/static';
+import type { Property } from '@/types';
 
 interface PropertyForm {
   title: string;
@@ -20,7 +21,10 @@ interface PropertyForm {
   amenities: string;
 }
 
-export default function CreatePropertyPage() {
+export default function EditPropertyPage() {
+  const params = useParams();
+  const propertyId = params.id as string;
+
   const [formData, setFormData] = useState<PropertyForm>({
     title: '',
     description: '',
@@ -37,10 +41,35 @@ export default function CreatePropertyPage() {
   const [imageUrl, setImageUrl] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [imageError, setImageError] = useState('');
+  const [property, setProperty] = useState<Property | null>(null);
+
   const { user } = useAuthStore();
+  const { properties, updateProperty } = usePropertyStore();
   const router = useRouter();
+
+  // Charger les données de la propriété
+  useEffect(() => {
+    const foundProperty = properties.find(p => p.id === propertyId);
+    if (foundProperty) {
+      setProperty(foundProperty);
+      setFormData({
+        title: foundProperty.title,
+        description: foundProperty.description,
+        type: foundProperty.type,
+        price: foundProperty.price,
+        location: foundProperty.location,
+        address: foundProperty.address,
+        bedrooms: foundProperty.bedrooms,
+        bathrooms: foundProperty.bathrooms,
+        area: foundProperty.area,
+        amenities: foundProperty.amenities.join(', '),
+      });
+      setImages(foundProperty.images.map(img => img.url));
+    }
+  }, [propertyId, properties]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -87,11 +116,22 @@ export default function CreatePropertyPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setSaving(true);
 
     try {
       if (!user) {
         alert('Vous devez être connecté');
+        return;
+      }
+
+      if (!property) {
+        alert('Propriété non trouvée');
+        return;
+      }
+
+      // Vérifier que l'utilisateur est le propriétaire
+      if (property.ownerId !== user.id) {
+        alert('Vous n\'avez pas les droits pour modifier cette propriété');
         return;
       }
 
@@ -110,29 +150,10 @@ export default function CreatePropertyPage() {
           alt: `Property image ${index + 1}`,
           order: index + 1,
         })),
-        ownerId: user.id,
-        isAvailable: true,
       };
 
-      // Envoyer à l'API Firestore
-      const response = await fetch('/api/properties', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(propertyData),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Erreur lors de la création');
-      }
-
-      const { property } = await response.json();
-
-      // La propriété est déjà créée dans Firestore via l'API
-      // Elle sera automatiquement synchronisée via le listener en temps réel
-      // Pas besoin d'appeler addProperty ici
+      // Utiliser la fonction updateProperty du store
+      await updateProperty(propertyId, propertyData);
 
       setSuccess(true);
       setTimeout(() => {
@@ -142,14 +163,42 @@ export default function CreatePropertyPage() {
       console.error('Erreur:', error);
       alert(`Erreur: ${error.message}`);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Chargement de la propriété...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!property) {
+    return (
+      <div className="flex justify-center items-center min-h-96">
+        <div className="text-center">
+          <h2 className="mb-4 font-bold text-slate-900 text-2xl">Propriété non trouvée</h2>
+          <p className="mb-6 text-slate-600">La propriété que vous cherchez n'existe pas ou a été supprimée.</p>
+          <Link
+            href="/dashboard/owner/properties"
+            className="bg-primary-600 hover:bg-primary-700 px-6 py-3 rounded-lg font-semibold text-white transition"
+          >
+            Retour à mes annonces
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-4xl">
       <div className="flex justify-between items-center mb-8">
-        <h2 className="font-bold text-slate-900 text-3xl">Créer une Annonce</h2>
+        <h2 className="font-bold text-slate-900 text-3xl">Modifier l'Annonce</h2>
         <Link
           href="/dashboard/owner/properties"
           className="flex items-center gap-2 hover:bg-slate-100 px-4 py-2 rounded-lg text-slate-600 transition"
@@ -160,7 +209,7 @@ export default function CreatePropertyPage() {
 
       {success && (
         <div className="bg-green-50 mb-6 p-4 border border-green-200 rounded-lg">
-          <p className="font-semibold text-green-800">✓ Annonce créée avec succès!</p>
+          <p className="font-semibold text-green-800">✓ Annonce modifiée avec succès!</p>
         </div>
       )}
 
@@ -412,10 +461,10 @@ export default function CreatePropertyPage() {
         <div className="flex gap-4">
           <button
             type="submit"
-            disabled={loading}
+            disabled={saving}
             className="flex flex-1 justify-center items-center gap-2 bg-gradient-fluid disabled:opacity-50 hover:shadow-lg px-6 py-4 rounded-lg font-bold text-white text-lg transition"
           >
-            <FaSave /> {loading ? 'Création en cours...' : "Créer l'annonce"}
+            <FaSave /> {saving ? 'Modification en cours...' : "Modifier l'annonce"}
           </button>
           <Link
             href="/dashboard/owner/properties"

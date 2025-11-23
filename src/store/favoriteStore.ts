@@ -4,6 +4,7 @@ import {
   collection,
   doc,
   getDocs,
+  getDoc,
   setDoc,
   deleteDoc,
   query,
@@ -99,11 +100,40 @@ export const useFavoriteStore = create<FavoriteStore>((set, get) => ({
     const favoritesRef = collection(db, 'users', userId, 'favorites');
     const unsubscribe = onSnapshot(
       favoritesRef,
-      (snapshot) => {
+      async (snapshot) => {
         const favorites: Property[] = [];
-        snapshot.forEach((doc) => {
-          favorites.push({ id: doc.id, ...doc.data() } as Property);
-        });
+        
+        // Load all favorites with enriched owner data
+        for (const docSnapshot of snapshot.docs) {
+          const data = docSnapshot.data();
+          
+          // Fetch owner data if not already present
+          let ownerData = data.owner || null;
+          if (!ownerData && data.ownerId) {
+            try {
+              const ownerDoc = await getDoc(doc(db, 'users', data.ownerId));
+              if (ownerDoc.exists()) {
+                const owner = ownerDoc.data();
+                ownerData = {
+                  id: ownerDoc.id,
+                  email: owner.email,
+                  firstName: owner.firstName,
+                  lastName: owner.lastName,
+                  role: owner.role,
+                };
+              }
+            } catch (error) {
+              console.error('Error fetching owner for favorite:', error);
+            }
+          }
+          
+          favorites.push({
+            id: docSnapshot.id,
+            ...data,
+            owner: ownerData,
+          } as Property);
+        }
+        
         set({ favorites, loading: false });
       },
       (error) => {

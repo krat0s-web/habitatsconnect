@@ -7,6 +7,7 @@ export interface User {
   lastName: string;
   profileImage?: string;
   phone?: string;
+  bio?: string; // Biography/description du propriétaire
   role: 'client' | 'owner' | 'admin';
   createdAt: Date;
   updatedAt: Date;
@@ -89,6 +90,7 @@ export type TransactionStatus = 'completed' | 'pending' | 'cancelled';
 export interface Transaction {
   id: string;
   ownerId: string;
+  propertyId?: string;
   reservationId?: string;
   date: Date;
   description: string;

@@ -15,35 +15,141 @@ import Link from 'next/link';
 import { motion, useAnimation, useInView } from 'framer-motion';
 import { useRef } from 'react';
 import { PropertyCard, Footer } from '@/components';
-import { Property } from '@/types';
-// Mock data
-const mockProperties: Property[] = [];
+import { usePropertyStore } from '@/store/propertyStore';
+import type { Property } from '@/types';
+
+// Featured mock properties for homepage
+const featuredMockProperties: Property[] = [
+  {
+    id: 'mock-1',
+    title: 'Villa Luxe en Bord de Mer',
+    description: 'Magnifique villa avec piscine et vue sur la mer',
+    type: 'villa',
+    price: 250,
+    location: 'Côte d\'Azur',
+    address: '123 Rue de la Plage',
+    bedrooms: 4,
+    bathrooms: 3,
+    area: 320,
+    amenities: ['WiFi', 'Parking', 'Piscine', 'Cuisine'],
+    images: [
+      {
+        id: '1',
+        url: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&q=80',
+        alt: 'Villa entrance',
+        order: 1,
+      },
+    ],
+    owner: {
+      id: '1',
+      email: 'owner1@example.com',
+      firstName: 'Jean',
+      lastName: 'Dupont',
+      role: 'owner',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    ownerId: '1',
+    isAvailable: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'mock-2',
+    title: 'Appartement Moderne Centre-Ville',
+    description: 'Appartement élégant au cœur de la ville',
+    type: 'apartment',
+    price: 120,
+    location: 'Paris',
+    address: '45 Avenue des Champs',
+    bedrooms: 2,
+    bathrooms: 1,
+    area: 85,
+    amenities: ['WiFi', 'Ascenseur', 'Balcon'],
+    images: [
+      {
+        id: '2',
+        url: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&q=80',
+        alt: 'Apartment living room',
+        order: 1,
+      },
+    ],
+    owner: {
+      id: '2',
+      email: 'owner2@example.com',
+      firstName: 'Marie',
+      lastName: 'Martin',
+      role: 'owner',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    ownerId: '2',
+    isAvailable: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'mock-3',
+    title: 'Studio Cosy Quartier Latin',
+    description: 'Studio parfait pour étudiants ou jeunes professionnels',
+    type: 'studio',
+    price: 80,
+    location: 'Paris',
+    address: '12 Rue Mouffetard',
+    bedrooms: 1,
+    bathrooms: 1,
+    area: 30,
+    amenities: ['WiFi', 'Cuisine équipée'],
+    images: [
+      {
+        id: '3',
+        url: 'https://images.unsplash.com/photo-1502672260066-6bc2c9ed1e8e?w=800&q=80',
+        alt: 'Studio interior',
+        order: 1,
+      },
+    ],
+    owner: {
+      id: '3',
+      email: 'owner3@example.com',
+      firstName: 'Pierre',
+      lastName: 'Dubois',
+      role: 'owner',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    ownerId: '3',
+    isAvailable: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+];
+
 export default function Home() {
-  const [properties, setProperties] = useState<Property[]>([]);
+  const { properties, loadProperties } = usePropertyStore();
+  const [displayedProperties, setDisplayedProperties] = useState<Property[]>([]);
   // Animation controls for scroll-triggered animations
   const controls = useAnimation();
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-100px' });
+
   useEffect(() => {
     if (isInView) {
       controls.start('visible');
     }
   }, [controls, isInView]);
+
   useEffect(() => {
-    // Charger les propriétés depuis localStorage
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('habitatsconnect_properties');
-      if (stored) {
-        try {
-          setProperties(JSON.parse(stored));
-        } catch (error) {
-          console.error('Erreur lors du chargement des propriétés:', error);
-        }
-      }
-    }
-  }, []);
+    // Charger les propriétés depuis Firebase/localStorage
+    loadProperties();
+  }, [loadProperties]);
+
+  useEffect(() => {
+    // Utiliser les propriétés du store ou les mock si le store est vide
+    const propertiesToDisplay = properties.length > 0 ? properties.slice(0, 3) : featuredMockProperties;
+    setDisplayedProperties(propertiesToDisplay);
+  }, [properties]);
   return (
-    <>
+    <div suppressHydrationWarning>
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-terracotta-500 via-terracotta-600 to-sage-700 h-screen overflow-hidden">
         {/* Animated Background */}
@@ -242,8 +348,8 @@ export default function Home() {
               },
             }}
           >
-            {properties.length > 0 ? (
-              properties.map((property, index) => (
+            {displayedProperties.length > 0 ? (
+              displayedProperties.map((property, index) => (
                 <motion.div
                   key={property.id}
                   variants={{
@@ -424,6 +530,6 @@ export default function Home() {
         </div>
       </section>
       <Footer />
-    </>
+    </div>
   );
 }

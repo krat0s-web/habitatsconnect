@@ -22,29 +22,102 @@ export default function Calendar({
     checkIn: Date | null;
     checkOut: Date | null;
   }>({ checkIn: null, checkOut: null });
+  const [reservedDates, setReservedDates] = useState<Set<string>>(new Set());
+
+  // Debug: Log reservations
+  useEffect(() => {
+    console.log('=== CALENDAR DEBUG ===');
+    console.log('Property ID:', propertyId);
+    console.log('Total reservations received:', reservations.length);
+    console.log('All reservations:', reservations);
+    const filtered = reservations.filter(r => r.propertyId === propertyId);
+    console.log('Filtered for this property:', filtered.length);
+    console.log('Filtered reservations:', filtered);
+    console.log('======================');
+  }, [propertyId, reservations]);
 
   // Obtenir toutes les dates réservées pour cette propriété
   const getReservedDates = () => {
     const reserved = new Set<string>();
     const propertyReservations = reservations.filter((r) => r.propertyId === propertyId);
 
-    propertyReservations.forEach((reservation) => {
-      if (reservation.status === 'confirmed' || reservation.status === 'completed') {
-        let currentDate = new Date(reservation.checkIn);
-        const checkOutDate = new Date(reservation.checkOut);
+    console.log('Property reservations for calendar:', propertyReservations);
 
-        while (currentDate < checkOutDate) {
-          const dateStr = currentDate.toISOString().split('T')[0];
-          reserved.add(dateStr);
-          currentDate.setDate(currentDate.getDate() + 1);
+    propertyReservations.forEach((reservation) => {
+      console.log('Processing reservation:', reservation.id, 'Status:', reservation.status);
+      
+      // Include confirmed, completed, AND pending reservations
+      if (reservation.status === 'confirmed' || reservation.status === 'completed' || reservation.status === 'pending') {
+        try {
+          // Convert to Date - handle all possible formats
+          let checkInDate: Date;
+          let checkOutDate: Date;
+
+          // CheckIn conversion
+          if (reservation.checkIn instanceof Date) {
+            checkInDate = new Date(reservation.checkIn);
+          } else if (reservation.checkIn?.toDate && typeof reservation.checkIn.toDate === 'function') {
+            checkInDate = reservation.checkIn.toDate();
+          } else if (typeof reservation.checkIn === 'object' && reservation.checkIn !== null && 'seconds' in reservation.checkIn) {
+            checkInDate = new Date((reservation.checkIn as any).seconds * 1000);
+          } else if (typeof reservation.checkIn === 'string') {
+            checkInDate = new Date(reservation.checkIn);
+          } else {
+            console.warn('Unknown checkIn format:', reservation.checkIn);
+            return;
+          }
+
+          // CheckOut conversion
+          if (reservation.checkOut instanceof Date) {
+            checkOutDate = new Date(reservation.checkOut);
+          } else if (reservation.checkOut?.toDate && typeof reservation.checkOut.toDate === 'function') {
+            checkOutDate = reservation.checkOut.toDate();
+          } else if (typeof reservation.checkOut === 'object' && reservation.checkOut !== null && 'seconds' in reservation.checkOut) {
+            checkOutDate = new Date((reservation.checkOut as any).seconds * 1000);
+          } else if (typeof reservation.checkOut === 'string') {
+            checkOutDate = new Date(reservation.checkOut);
+          } else {
+            console.warn('Unknown checkOut format:', reservation.checkOut);
+            return;
+          }
+
+          console.log('Converted dates - CheckIn:', checkInDate, 'CheckOut:', checkOutDate);
+
+          // Validate dates
+          if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
+            console.error('Invalid dates after conversion:', { checkIn: checkInDate, checkOut: checkOutDate, original: reservation });
+            return;
+          }
+
+          // Mark all dates in the range as reserved
+          let currentDate = new Date(checkInDate);
+          currentDate.setHours(0, 0, 0, 0); // Reset to midnight
+          
+          const endDate = new Date(checkOutDate);
+          endDate.setHours(0, 0, 0, 0); // Reset to midnight
+
+          while (currentDate <= endDate) {
+            const dateStr = currentDate.toISOString().split('T')[0];
+            console.log('Marking date as reserved:', dateStr);
+            reserved.add(dateStr);
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+        } catch (error) {
+          console.error('Error processing reservation dates:', error, reservation);
         }
       }
     });
 
+    console.log('Total reserved dates:', Array.from(reserved));
     return reserved;
   };
 
-  const reservedDates = getReservedDates();
+  // Recalculate reserved dates when reservations change
+  useEffect(() => {
+    console.log('Recalculating reserved dates...');
+    const newReservedDates = getReservedDates();
+    setReservedDates(newReservedDates);
+  }, [reservations, propertyId]);
 
   const isDateReserved = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
@@ -166,18 +239,18 @@ export default function Calendar({
         )}
 
         {/* Legend */}
-        <div className="flex flex-wrap gap-4 text-sm">
+        <div className="gap-3 grid grid-cols-1 sm:grid-cols-3 bg-slate-50 p-4 border border-slate-200 rounded-xl text-sm">
           <div className="flex items-center gap-2">
-            <div className="bg-white border-2 border-primary-500 rounded w-4 h-4"></div>
-            <span className="text-slate-600">Disponible</span>
+            <div className="bg-white border-2 border-slate-300 shadow-sm rounded w-6 h-6"></div>
+            <span className="font-medium text-slate-700">Disponible</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="bg-primary-100 border-2 border-primary-500 rounded w-4 h-4"></div>
-            <span className="text-slate-600">Sélectionné</span>
+            <div className="bg-primary-100 border-2 border-primary-500 shadow-sm rounded w-6 h-6"></div>
+            <span className="font-medium text-slate-700">Sélectionné</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="bg-red-100 border-2 border-red-500 rounded w-4 h-4"></div>
-            <span className="text-slate-600">Réservé</span>
+            <div className="bg-red-100 border-2 border-red-500 shadow-sm rounded w-6 h-6"></div>
+            <span className="font-medium text-red-700">Réservé</span>
           </div>
         </div>
 

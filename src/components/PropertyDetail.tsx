@@ -19,11 +19,13 @@ import {
   FaComment,
   FaPlay,
   FaPause,
+  FaIdCard,
 } from 'react-icons/fa';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import Calendar from './Calendar';
 import type { Property, Reservation } from '@/types';
 import { PRICE_SYMBOL } from '@/lib/static';
+import Link from 'next/link';
 interface PropertyDetailProps {
   property: Property;
   onReserve?: (reservation: Partial<Reservation>) => void;
@@ -48,6 +50,36 @@ export const PropertyDetail: React.FC<PropertyDetailProps> = ({
   const [checkInDate, setCheckInDate] = useState('');
   const [checkOutDate, setCheckOutDate] = useState('');
   const [guests, setGuests] = useState(1);
+  const [averageRating, setAverageRating] = useState<number>(0);
+  const [reviewCount, setReviewCount] = useState<number>(0);
+
+  // Load average rating
+  useEffect(() => {
+    const loadRating = async () => {
+      try {
+        const { collection, query, where, getDocs } = await import('firebase/firestore');
+        const { db } = await import('@/lib/firebase');
+        
+        const reviewsQuery = query(
+          collection(db, 'reviews'),
+          where('propertyId', '==', property.id)
+        );
+        
+        const snapshot = await getDocs(reviewsQuery);
+        const reviews = snapshot.docs.map(doc => doc.data());
+        
+        if (reviews.length > 0) {
+          const avg = reviews.reduce((acc, r) => acc + (r.rating || 0), 0) / reviews.length;
+          setAverageRating(avg);
+          setReviewCount(reviews.length);
+        }
+      } catch (error) {
+        console.error('Error loading rating:', error);
+      }
+    };
+    
+    loadRating();
+  }, [property.id]);
   // Auto-play functionality
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -246,11 +278,21 @@ export const PropertyDetail: React.FC<PropertyDetailProps> = ({
                 <FaMapMarkerAlt className="text-primary-600" />
                 <span>{property.location}</span>
               </div>
-              <div className="flex items-center gap-1">
+              <button
+                onClick={() => {
+                  const reviewSection = document.getElementById('review-section');
+                  reviewSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
+                className="flex items-center gap-1 hover:bg-slate-100 px-3 py-2 rounded-lg transition cursor-pointer"
+              >
                 <FaStar className="text-yellow-400" />
-                <span className="font-semibold">4.8</span>
-                <span className="text-slate-600">(128 avis)</span>
-              </div>
+                <span className="font-semibold">
+                  {averageRating > 0 ? averageRating.toFixed(1) : '0.0'}
+                </span>
+                <span className="text-slate-600">
+                  ({reviewCount} {reviewCount === 1 ? 'avis' : 'avis'})
+                </span>
+              </button>
               <span className="font-semibold text-primary-600">
                 {PRICE_SYMBOL}
                 {property.price} par nuit
@@ -304,29 +346,51 @@ export const PropertyDetail: React.FC<PropertyDetailProps> = ({
           </div>
           {/* Owner Info */}
           <div className="bg-gradient-to-r from-primary-50 to-secondary-50 mb-8 p-6 border border-primary-200 rounded-2xl">
-            <div className="flex justify-between items-center">
+            <div className="flex md:flex-row flex-col justify-between items-center gap-4">
               <div className="flex items-center gap-4">
                 <div className="flex justify-center items-center bg-gradient-fluid rounded-full w-16 h-16 text-white text-2xl">
                   <FaUser />
                 </div>
                 <div>
                   <h3 className="font-bold text-lg">
-                    {property.owner?.firstName} {property.owner?.lastName}
+                    {property.owner?.firstName && property.owner?.lastName
+                      ? `${property.owner.firstName} ${property.owner.lastName}`
+                      : 'Propriétaire'}
                   </h3>
-                  <p className="text-slate-600 text-sm">Propriétaire · Membre depuis 2 ans</p>
                 </div>
               </div>
-              <button
-                onClick={onContact}
-                disabled={isOwner}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold transition ${
-                  isOwner
-                    ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                    : 'bg-primary-600 text-white hover:bg-primary-700'
-                }`}
-              >
-                <FaComment /> {isOwner ? 'Votre annonce' : 'Contacter'}
-              </button>
+              <div className="flex md:flex-row flex-col gap-2 w-full md:w-auto">
+                {!isOwner && property.ownerId && (
+                  <>
+                    <Link
+                      href={`/owner-profile/${property.ownerId}`}
+                      className="flex flex-1 md:flex-none justify-center items-center gap-2 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl font-semibold text-slate-700 transition"
+                    >
+                      <FaIdCard /> Voir profil
+                    </Link>
+                    <button
+                      onClick={() => {
+                        const reviewSection = document.getElementById('review-section');
+                        reviewSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                      className="flex flex-1 md:flex-none justify-center items-center gap-2 bg-yellow-50 hover:bg-yellow-100 px-4 py-2 border-yellow-300 border rounded-xl font-semibold text-yellow-700 transition"
+                    >
+                      <FaStar /> Laisser un avis
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={onContact}
+                  disabled={isOwner}
+                  className={`flex flex-1 md:flex-none items-center justify-center gap-2 px-4 py-2 rounded-xl font-semibold transition ${
+                    isOwner
+                      ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                      : 'bg-primary-600 text-white hover:bg-primary-700'
+                  }`}
+                >
+                  <FaComment /> {isOwner ? 'Votre annonce' : 'Contacter'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

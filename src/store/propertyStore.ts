@@ -108,8 +108,23 @@ export const usePropertyStore = create<PropertyStore>((set, get) => ({
       set({ properties, loading: false });
       return properties;
     } catch (error: any) {
-      console.error('Error loading properties:', error);
-      set({ error: error.message, loading: false });
+      console.error('Error loading properties from Firebase, trying localStorage:', error);
+      
+      // Fallback to localStorage
+      try {
+        if (typeof window !== 'undefined') {
+          const stored = localStorage.getItem('properties');
+          if (stored) {
+            const properties = JSON.parse(stored);
+            set({ properties, loading: false, error: null });
+            return properties;
+          }
+        }
+      } catch (localError) {
+        console.error('Error loading from localStorage:', localError);
+      }
+      
+      set({ error: error.message, loading: false, properties: [] });
       return [];
     }
   },
@@ -144,11 +159,40 @@ export const usePropertyStore = create<PropertyStore>((set, get) => ({
 
     const unsubscribe = onSnapshot(
       q,
-      (snapshot) => {
+      async (snapshot) => {
         const properties: Property[] = [];
-        snapshot.forEach((doc) => {
-          properties.push({ id: doc.id, ...doc.data() } as Property);
-        });
+        
+        // Load all properties with enriched owner data
+        for (const docSnapshot of snapshot.docs) {
+          const data = docSnapshot.data();
+          
+          // Fetch owner data
+          let ownerData = null;
+          if (data.ownerId) {
+            try {
+              const ownerDoc = await getDoc(doc(db, 'users', data.ownerId));
+              if (ownerDoc.exists()) {
+                const owner = ownerDoc.data();
+                ownerData = {
+                  id: ownerDoc.id,
+                  email: owner.email,
+                  firstName: owner.firstName,
+                  lastName: owner.lastName,
+                  role: owner.role,
+                };
+              }
+            } catch (error) {
+              console.error('Error fetching owner:', error);
+            }
+          }
+          
+          properties.push({
+            id: docSnapshot.id,
+            ...data,
+            owner: ownerData,
+          } as Property);
+        }
+        
         set({ properties, loading: false });
       },
       (error) => {

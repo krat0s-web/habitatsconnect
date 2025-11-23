@@ -11,7 +11,7 @@ import {
   FaRegHeart,
 } from 'react-icons/fa';
 import Link from 'next/link';
-import { useAuthStore } from '@/store';
+import { useAuthStore, useFavoriteStore } from '@/store';
 import type { Property } from '@/types';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,25 +33,42 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   index = 0,
 }) => {
   const [showFull, setShowFull] = useState(false);
-  const [isFav, setIsFav] = useState(isFavorited);
+  const [averageRating, setAverageRating] = useState<number>(0);
+  const [reviewCount, setReviewCount] = useState<number>(0);
   const { user } = useAuthStore();
+  const { isFavorite, addFavorite, removeFavorite } = useFavoriteStore();
+  
+  const isFav = isFavorite(property.id);
 
-  // Charger l'état des favoris depuis localStorage au montage
+  // Load average rating
   useEffect(() => {
-    if (user && typeof window !== 'undefined') {
-      const stored = localStorage.getItem(`habitatsconnect_favorites_${user.id}`);
-      if (stored) {
-        try {
-          const favorites = JSON.parse(stored);
-          setIsFav(favorites.some((p: any) => p.id === property.id));
-        } catch {
-          setIsFav(false);
+    const loadRating = async () => {
+      try {
+        const { collection, query, where, getDocs } = await import('firebase/firestore');
+        const { db } = await import('@/lib/firebase');
+        
+        const reviewsQuery = query(
+          collection(db, 'reviews'),
+          where('propertyId', '==', property.id)
+        );
+        
+        const snapshot = await getDocs(reviewsQuery);
+        const reviews = snapshot.docs.map(doc => doc.data());
+        
+        if (reviews.length > 0) {
+          const avg = reviews.reduce((acc, r) => acc + (r.rating || 0), 0) / reviews.length;
+          setAverageRating(avg);
+          setReviewCount(reviews.length);
         }
+      } catch (error) {
+        console.error('Error loading rating:', error);
       }
-    }
-  }, [user, property.id]);
+    };
+    
+    loadRating();
+  }, [property.id]);
 
-  const handleFavorite = (e: React.MouseEvent) => {
+  const handleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
 
     if (!user) {
@@ -59,25 +76,17 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
       return;
     }
 
-    if (typeof window !== 'undefined') {
-      const storageName = `habitatsconnect_favorites_${user.id}`;
-      const stored = localStorage.getItem(storageName);
-      const favorites = stored ? JSON.parse(stored) : [];
-
-      let updated;
+    try {
       if (isFav) {
-        // Retirer des favoris
-        updated = favorites.filter((p: any) => p.id !== property.id);
+        await removeFavorite(user.id, property.id);
       } else {
-        // Ajouter aux favoris
-        updated = [...favorites, property];
+        await addFavorite(user.id, property);
       }
-
-      localStorage.setItem(storageName, JSON.stringify(updated));
-      setIsFav(!isFav);
+      onFavorite?.(property.id);
+    } catch (error) {
+      console.error('Erreur lors de la gestion du favori:', error);
+      alert('Erreur lors de la gestion du favori');
     }
-
-    onFavorite?.(property.id);
   };
 
   const getPropertyTypeVariant = (type: string): 'purple' | 'blue' | 'secondary' | 'pink' => {
@@ -183,8 +192,12 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-1">
               <FaStar className="text-yellow-400" />
-              <span className="font-semibold text-sm">4.8</span>
-              <span className="text-slate-500 text-xs">(128 avis)</span>
+              <span className="font-semibold text-sm">
+                {averageRating > 0 ? averageRating.toFixed(1) : '0.0'}
+              </span>
+              <span className="text-slate-500 text-xs">
+                ({reviewCount} avis)
+              </span>
             </div>
             <span className="text-slate-500 text-xs">Par {property.owner?.firstName}</span>
           </div>

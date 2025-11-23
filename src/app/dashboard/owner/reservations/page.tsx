@@ -11,8 +11,8 @@ import {
   FaHourglass,
 } from 'react-icons/fa';
 import Link from 'next/link';
-import { useAuthStore, useReservationStore } from '@/store';
-import type { Reservation } from '@/types';
+import { useAuthStore, useReservationStore, useTransactionStore, usePropertyStore } from '@/store';
+import type { Reservation, Transaction } from '@/types';
 import { PRICE_SYMBOL } from '@/lib/static';
 export default function OwnerReservationsPage() {
   const { user } = useAuthStore();
@@ -23,6 +23,8 @@ export default function OwnerReservationsPage() {
     subscribeToReservations,
     unsubscribeFromReservations,
   } = useReservationStore();
+  const { addTransaction } = useTransactionStore();
+  const { properties } = usePropertyStore();
   const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'rejected' | 'completed'>(
     'pending'
   );
@@ -48,21 +50,97 @@ export default function OwnerReservationsPage() {
   const handleConfirm = async (id: string) => {
     setLoading(true);
     try {
+      const reservation = reservations.find((r) => r.id === id);
+      if (!reservation || !user?.id) {
+        throw new Error('Réservation ou utilisateur introuvable');
+      }
+
+      // Vérifier si une transaction existe déjà pour cette réservation
+      const { transactions } = useTransactionStore.getState();
+      const existingTransaction = transactions.find(
+        (t) => t.reservationId === reservation.id && t.type === 'income'
+      );
+
+      // Confirmer la réservation
       await confirmReservation(id);
+      console.log('Réservation confirmée avec succès:', id);
+
+      // Créer une transaction seulement si elle n'existe pas
+      if (!existingTransaction) {
+        const transaction: Transaction = {
+          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          ownerId: user.id,
+          propertyId: reservation.propertyId,
+          reservationId: reservation.id,
+          amount: reservation.totalPrice,
+          type: 'income',
+          status: 'completed',
+          description: `Réservation confirmée - ${reservation.property?.title || 'Propriété'}`,
+          date: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        await addTransaction(transaction);
+        console.log('Transaction créée:', transaction);
+      } else {
+        console.log('Transaction déjà existante pour cette réservation');
+      }
+      
+      // Message de succès
+      alert('Réservation confirmée avec succès !');
     } catch (error) {
       console.error('Error confirming reservation:', error);
-      alert('Erreur lors de la confirmation');
+      alert(`Erreur lors de la confirmation: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     } finally {
       setLoading(false);
     }
   };
-  const handleReject = async (id: string) => {
+  const handleReleaseDeposit = async (reservation: Reservation) => {
+    if (!user?.id) return;
+
+    const confirmRelease = window.confirm(
+      `Êtes-vous sûr de vouloir libérer le dépôt de ${PRICE_SYMBOL}${reservation.depositAmount.toFixed(2)} pour cette réservation ? Cette action est irréversible.`
+    );
+
+    if (!confirmRelease) return;
+
     setLoading(true);
     try {
-      await updateReservation(id, { status: 'rejected' });
+      // Créer une transaction de dépense pour la libération du dépôt
+      const transaction: Transaction = {
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        ownerId: user.id,
+        propertyId: reservation.propertyId,
+        reservationId: reservation.id,
+        amount: reservation.depositAmount,
+        type: 'expense',
+        status: 'completed',
+        description: `Libération dépôt - ${reservation.property?.title || 'Propriété'}`,
+        date: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      await addTransaction(transaction);
+      console.log('Dépôt libéré:', transaction);
+
+      alert('Dépôt libéré avec succès ! Le client recevra son argent.');
     } catch (error) {
-      console.error('Error rejecting reservation:', error);
-      alert(`Erreur lors du rejet: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Error releasing deposit:', error);
+      alert(`Erreur lors de la libération du dépôt: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleCompleteReservation = async (id: string) => {
+    setLoading(true);
+    try {
+      await updateReservation(id, { status: 'completed' });
+      alert('Réservation marquée comme complétée');
+    } catch (error) {
+      console.error('Error completing reservation:', error);
+      alert(`Erreur lors de la completion: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -115,25 +193,25 @@ export default function OwnerReservationsPage() {
         <div className="bg-white shadow-md p-4 border-yellow-500 border-l-4 rounded-xl">
           <p className="font-semibold text-slate-600 text-sm">En attente</p>
           <p className="font-bold text-yellow-600 text-3xl">
-            {reservations.filter((r) => r.status === 'pending').length}
+            {ownerReservations.filter((r) => r.status === 'pending').length}
           </p>
         </div>
         <div className="bg-white shadow-md p-4 border-green-500 border-l-4 rounded-xl">
           <p className="font-semibold text-slate-600 text-sm">Confirmées</p>
           <p className="font-bold text-green-600 text-3xl">
-            {reservations.filter((r) => r.status === 'confirmed').length}
+            {ownerReservations.filter((r) => r.status === 'confirmed').length}
           </p>
         </div>
         <div className="bg-white shadow-md p-4 border-red-500 border-l-4 rounded-xl">
           <p className="font-semibold text-slate-600 text-sm">Rejetées</p>
           <p className="font-bold text-red-600 text-3xl">
-            {reservations.filter((r) => r.status === 'rejected').length}
+            {ownerReservations.filter((r) => r.status === 'rejected').length}
           </p>
         </div>
         <div className="bg-white shadow-md p-4 border-blue-500 border-l-4 rounded-xl">
           <p className="font-semibold text-slate-600 text-sm">Complétées</p>
           <p className="font-bold text-blue-600 text-3xl">
-            {reservations.filter((r) => r.status === 'completed').length}
+            {ownerReservations.filter((r) => r.status === 'completed').length}
           </p>
         </div>
       </div>
@@ -247,6 +325,24 @@ export default function OwnerReservationsPage() {
                         <FaTimes /> {loading ? 'Traitement...' : 'Refuser'}
                       </button>
                     </div>
+                  )}
+                  {reservation.status === 'confirmed' && new Date(reservation.checkOut) < new Date() && (
+                    <button
+                      onClick={() => handleCompleteReservation(reservation.id)}
+                      disabled={loading}
+                      className="flex justify-center items-center gap-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 px-3 py-2 rounded-lg font-semibold text-white text-sm transition disabled:cursor-not-allowed"
+                    >
+                      <FaCheck /> {loading ? 'Traitement...' : 'Marquer Complétée'}
+                    </button>
+                  )}
+                  {reservation.status === 'completed' && reservation.depositAmount > 0 && (
+                    <button
+                      onClick={() => handleReleaseDeposit(reservation)}
+                      disabled={loading}
+                      className="flex justify-center items-center gap-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 px-3 py-2 rounded-lg font-semibold text-white text-sm transition disabled:cursor-not-allowed"
+                    >
+                      <FaCheck /> {loading ? 'Traitement...' : 'Libérer Dépôt'}
+                    </button>
                   )}
                 </div>
               </div>

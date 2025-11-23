@@ -64,10 +64,14 @@ export const useReservationStore = create<ReservationStore>((set, get) => ({
   updateReservation: async (id, updatedData) => {
     try {
       const reservationRef = doc(db, 'reservations', id);
-      await updateDoc(reservationRef, {
+      const updatePayload = {
         ...updatedData,
         updatedAt: new Date().toISOString(),
-      });
+      };
+      
+      console.log('Updating reservation:', id, 'with data:', updatePayload);
+      await updateDoc(reservationRef, updatePayload);
+      console.log('Reservation updated successfully in Firestore');
 
       set((state) => ({
         reservations: state.reservations.map((r) => (r.id === id ? { ...r, ...updatedData } : r)),
@@ -128,10 +132,10 @@ export const useReservationStore = create<ReservationStore>((set, get) => ({
         reservations.push({
           id: doc.id,
           ...data,
-          checkIn: data.checkIn instanceof Date ? data.checkIn : new Date(data.checkIn),
-          checkOut: data.checkOut instanceof Date ? data.checkOut : new Date(data.checkOut),
-          createdAt: data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt),
-          updatedAt: data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt),
+          checkIn: data.checkIn?.toDate ? data.checkIn.toDate() : (data.checkIn instanceof Date ? data.checkIn : new Date(data.checkIn)),
+          checkOut: data.checkOut?.toDate ? data.checkOut.toDate() : (data.checkOut instanceof Date ? data.checkOut : new Date(data.checkOut)),
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt)),
+          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : (data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt)),
         } as Reservation);
       });
 
@@ -155,10 +159,11 @@ export const useReservationStore = create<ReservationStore>((set, get) => ({
         reservations.push({
           id: doc.id,
           ...data,
-          checkIn: data.checkIn instanceof Date ? data.checkIn : new Date(data.checkIn),
-          checkOut: data.checkOut instanceof Date ? data.checkOut : new Date(data.checkOut),
-          createdAt: data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt),
-          updatedAt: data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt),
+          // Convert Firestore Timestamps to Date objects
+          checkIn: data.checkIn?.toDate ? data.checkIn.toDate() : (data.checkIn instanceof Date ? data.checkIn : new Date(data.checkIn)),
+          checkOut: data.checkOut?.toDate ? data.checkOut.toDate() : (data.checkOut instanceof Date ? data.checkOut : new Date(data.checkOut)),
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt)),
+          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : (data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt)),
         } as Reservation);
       });
 
@@ -181,19 +186,52 @@ export const useReservationStore = create<ReservationStore>((set, get) => ({
 
     const unsubscribe = onSnapshot(
       q,
-      (snapshot) => {
+      async (snapshot) => {
         const reservations: Reservation[] = [];
-        snapshot.forEach((doc) => {
-          const data = doc.data();
+        
+        // Load all reservations with enriched data
+        for (const docSnapshot of snapshot.docs) {
+          const data = docSnapshot.data();
+          
+          // Fetch property data
+          let propertyData = null;
+          if (data.propertyId) {
+            try {
+              const propertyDoc = await getDoc(doc(db, 'properties', data.propertyId));
+              if (propertyDoc.exists()) {
+                propertyData = { id: propertyDoc.id, ...propertyDoc.data() };
+              }
+            } catch (error) {
+              console.error('Error fetching property:', error);
+            }
+          }
+          
+          // Fetch client data
+          let clientData = null;
+          if (data.clientId) {
+            try {
+              const clientDoc = await getDoc(doc(db, 'users', data.clientId));
+              if (clientDoc.exists()) {
+                clientData = { id: clientDoc.id, ...clientDoc.data() };
+              }
+            } catch (error) {
+              console.error('Error fetching client:', error);
+            }
+          }
+          
           reservations.push({
-            id: doc.id,
+            id: docSnapshot.id,
             ...data,
-            checkIn: data.checkIn instanceof Date ? data.checkIn : new Date(data.checkIn),
-            checkOut: data.checkOut instanceof Date ? data.checkOut : new Date(data.checkOut),
-            createdAt: data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt),
-            updatedAt: data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt),
+            property: propertyData,
+            client: clientData,
+            // Convert Firestore Timestamps to Date objects
+            checkIn: data.checkIn?.toDate ? data.checkIn.toDate() : (data.checkIn instanceof Date ? data.checkIn : new Date(data.checkIn)),
+            checkOut: data.checkOut?.toDate ? data.checkOut.toDate() : (data.checkOut instanceof Date ? data.checkOut : new Date(data.checkOut)),
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt)),
+            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : (data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt)),
           } as Reservation);
-        });
+        }
+        
         set({ reservations, loading: false });
       },
       (error) => {

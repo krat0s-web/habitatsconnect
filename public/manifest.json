@@ -1,0 +1,43 @@
+{
+  "name": "HabitatsConnect",
+  "short_name": "HabitatsConnect",
+  "description": "Plateforme immobilière moderne pour découvrir et réserver des propriétés uniques",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f6f5",
+  "theme_color": "#5a7a64",
+  "orientation": "portrait-primary",
+  "categories": ["lifestyle", "business", "travel"],
+  "lang": "fr",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Propriétés",
+      "short_name": "Propriétés",
+      "description": "Voir toutes les propriétés disponibles",
+      "url": "/properties",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Mon Profil",
+      "short_name": "Profil",
+      "description": "Accéder à votre profil",
+      "url": "/dashboard/client/profile",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}

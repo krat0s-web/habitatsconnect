@@ -9,16 +9,24 @@ import {
   FaClock,
   FaDownload,
   FaChartLine,
+  FaPlus,
+  FaTimes,
 } from 'react-icons/fa';
 import { useAuthStore, useTransactionStore } from '@/store';
 import type { Transaction } from '@/types';
 import { PRICE_SYMBOL } from '@/lib/static';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function TreasuryPage() {
   const { user } = useAuthStore();
-  const { transactions, subscribeToTransactions, unsubscribeFromTransactions } =
+  const { transactions, subscribeToTransactions, unsubscribeFromTransactions, addTransaction } =
     useTransactionStore();
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
+  const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [expenseDescription, setExpenseDescription] = useState('');
+  const [expenseAmount, setExpenseAmount] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
@@ -31,24 +39,123 @@ export default function TreasuryPage() {
     };
   }, [user?.id, subscribeToTransactions, unsubscribeFromTransactions]);
 
-  const filteredTransactions = transactions.filter((t) => {
+  // Dédupliquer les transactions par reservationId
+  const uniqueTransactions = transactions.reduce((acc, transaction) => {
+    if (transaction.reservationId) {
+      // Si c'est une transaction liée à une réservation, garder seulement la première
+      const existing = acc.find(t => t.reservationId === transaction.reservationId);
+      if (!existing) {
+        acc.push(transaction);
+      }
+    } else {
+      // Si pas de reservationId, garder la transaction
+      acc.push(transaction);
+    }
+    return acc;
+  }, [] as Transaction[]);
+
+  const filteredTransactions = uniqueTransactions.filter((t) => {
     if (filter === 'all') return true;
     return t.type === filter;
   });
 
-  const totalIncome = transactions
+  const totalIncome = uniqueTransactions
     .filter((t) => t.type === 'income' && t.status === 'completed')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const totalPending = transactions
+  const totalPending = uniqueTransactions
     .filter((t) => t.type === 'income' && t.status === 'pending')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const totalExpense = transactions
+  const totalExpense = uniqueTransactions
     .filter((t) => t.type === 'expense' && t.status === 'completed')
     .reduce((sum, t) => sum + t.amount, 0);
 
   const netBalance = totalIncome - totalExpense;
+
+  const generatePDF = () => {
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(20);
+    doc.text('Relevé de Trésorerie', 20, 30);
+    
+    // Owner info
+    doc.setFontSize(12);
+    doc.text(`Propriétaire: ${user?.firstName} ${user?.lastName}`, 20, 50);
+    doc.text(`Date de génération: ${new Date().toLocaleDateString('fr-FR')}`, 20, 60);
+    
+    // Summary
+    doc.text(`Revenus reçus: ${totalIncome.toLocaleString()} ${PRICE_SYMBOL}`, 20, 80);
+    doc.text(`En attente: ${totalPending.toLocaleString()} ${PRICE_SYMBOL}`, 20, 90);
+    doc.text(`Dépenses: ${totalExpense.toLocaleString()} ${PRICE_SYMBOL}`, 20, 100);
+    doc.text(`Solde net: ${netBalance.toLocaleString()} ${PRICE_SYMBOL}`, 20, 110);
+    
+    // Transactions table
+    const tableData = filteredTransactions.map((transaction) => [
+      transaction.date ? new Date(transaction.date).toLocaleDateString('fr-FR') : 'Date invalide',
+      transaction.description,
+      getStatusBadgeText(transaction.status),
+      `${transaction.type === 'income' ? '+' : '-'}${transaction.amount.toLocaleString()} ${PRICE_SYMBOL}`,
+    ]);
+    
+    autoTable(doc, {
+      head: [['Date', 'Description', 'Statut', 'Montant']],
+      body: tableData,
+      startY: 120,
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [41, 128, 185] },
+    });
+    
+    // Footer
+    doc.setFontSize(8);
+    doc.text('Généré par HabitatsConnect', 20, doc.internal.pageSize.height - 10);
+    
+    // Download
+    doc.save(`releve-tresorerie-${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  const handleAddExpense = async () => {
+    if (!user?.id || !expenseDescription.trim() || !expenseAmount) return;
+
+    const amount = parseFloat(expenseAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert('Veuillez entrer un montant valide');
+      return;
+    }
+
+    if (amount > netBalance) {
+      alert('Le montant de la dépense ne peut pas dépasser le solde net');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const newExpense: Omit<Transaction, 'id'> = {
+        ownerId: user.id,
+        date: new Date(),
+        description: expenseDescription.trim(),
+        amount,
+        status: 'completed',
+        type: 'expense',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      await addTransaction(newExpense as Transaction);
+
+      // Reset form
+      setExpenseDescription('');
+      setExpenseAmount('');
+      setShowExpenseForm(false);
+      alert('Dépense ajoutée avec succès');
+    } catch (error) {
+      console.error('Error adding expense:', error);
+      alert('Erreur lors de l\'ajout de la dépense');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -75,14 +182,38 @@ export default function TreasuryPage() {
     }
   };
 
+  const getStatusBadgeText = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'Complété';
+      case 'pending':
+        return 'En attente';
+      case 'cancelled':
+        return 'Annulé';
+      default:
+        return status;
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="flex justify-between items-center">
         <h2 className="font-bold text-slate-900 text-2xl">Trésorerie</h2>
-        <button className="flex items-center gap-2 bg-primary-50 hover:bg-primary-100 px-6 py-3 rounded-lg font-semibold text-primary-600 transition">
-          <FaDownload /> Télécharger Relevé
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowExpenseForm(true)}
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold text-white transition"
+          >
+            <FaPlus /> Ajouter Dépense
+          </button>
+          <button
+            onClick={generatePDF}
+            className="flex items-center gap-2 bg-primary-50 hover:bg-primary-100 px-6 py-3 rounded-lg font-semibold text-primary-600 transition"
+          >
+            <FaDownload /> Télécharger Relevé
+          </button>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -183,7 +314,7 @@ export default function TreasuryPage() {
               {filteredTransactions.map((transaction) => (
                 <tr key={transaction.id} className="hover:bg-slate-50 transition">
                   <td className="px-6 py-4 text-slate-600 text-sm">
-                    {new Date(transaction.date).toLocaleDateString('fr-FR')}
+                    {transaction.date ? new Date(transaction.date).toLocaleDateString('fr-FR') : 'Date invalide'}
                   </td>
                   <td className="px-6 py-4 font-medium text-slate-900 text-sm">
                     {transaction.description}
@@ -209,6 +340,78 @@ export default function TreasuryPage() {
         <div className="bg-white py-12 rounded-xl text-center">
           <FaWallet className="mx-auto mb-4 text-slate-300 text-6xl" />
           <p className="font-semibold text-slate-600 text-xl">Aucune transaction</p>
+        </div>
+      )}
+
+      {/* Expense Form Modal */}
+      {showExpenseForm && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+          <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md mx-4">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-bold text-slate-900 text-xl">Ajouter une Dépense</h3>
+              <button
+                onClick={() => setShowExpenseForm(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block mb-2 font-semibold text-slate-700 text-sm">
+                  Description de la dépense
+                </label>
+                <input
+                  type="text"
+                  value={expenseDescription}
+                  onChange={(e) => setExpenseDescription(e.target.value)}
+                  placeholder="Ex: Réparation, Fournitures, etc."
+                  className="px-4 py-3 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-red-500 w-full"
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              <div>
+                <label className="block mb-2 font-semibold text-slate-700 text-sm">
+                  Montant ({PRICE_SYMBOL})
+                </label>
+                <input
+                  type="number"
+                  value={expenseAmount}
+                  onChange={(e) => setExpenseAmount(e.target.value)}
+                  placeholder="0.00"
+                  min="0"
+                  step="0.01"
+                  className="px-4 py-3 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-red-500 w-full"
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-xl">
+                <p className="text-slate-600 text-sm">
+                  Solde disponible: <span className="font-bold text-slate-900">{netBalance.toLocaleString()} {PRICE_SYMBOL}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowExpenseForm(false)}
+                className="flex-1 bg-slate-200 hover:bg-slate-300 px-6 py-3 rounded-xl font-semibold text-slate-700 transition"
+                disabled={isSubmitting}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleAddExpense}
+                disabled={isSubmitting || !expenseDescription.trim() || !expenseAmount}
+                className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-red-300 px-6 py-3 rounded-xl font-semibold text-white transition"
+              >
+                {isSubmitting ? 'Ajout...' : 'Ajouter Dépense'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
