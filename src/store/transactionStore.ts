@@ -1,16 +1,31 @@
 import { create } from 'zustand';
 import type { Transaction } from '@/types';
+import {
+  collection,
+  doc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  onSnapshot,
+  Unsubscribe,
+} from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface TransactionStore {
   transactions: Transaction[];
   loading: boolean;
   error: string | null;
-  addTransaction: (transaction: Transaction) => void;
+  unsubscribe: Unsubscribe | null;
+  addTransaction: (transaction: Transaction) => Promise<void>;
   getTransactionsByOwnerId: (ownerId: string) => Transaction[];
-  updateTransaction: (id: string, updates: Partial<Transaction>) => void;
-  deleteTransaction: (id: string) => void;
+  updateTransaction: (id: string, updates: Partial<Transaction>) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
   loadTransactions: (ownerId: string) => Promise<void>;
-  saveTransactions: () => void;
+  subscribeToTransactions: (ownerId: string) => void;
+  unsubscribeFromTransactions: () => void;
   clearError: () => void;
 }
 
@@ -18,18 +33,25 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
   transactions: [],
   loading: false,
   error: null,
+  unsubscribe: null,
 
-  addTransaction: (transaction) => {
-    set((state) => {
-      const newTransactions = [...state.transactions, transaction];
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(
-          'habitatsconnect_transactions',
-          JSON.stringify(newTransactions)
-        );
-      }
-      return { transactions: newTransactions };
-    });
+  addTransaction: async (transaction) => {
+    try {
+      const transactionsRef = collection(db, 'transactions');
+      const docRef = await addDoc(transactionsRef, {
+        ...transaction,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      set((state) => ({
+        transactions: [...state.transactions, { ...transaction, id: docRef.id }],
+      }));
+    } catch (error: any) {
+      console.error('Error adding transaction:', error);
+      set({ error: error.message });
+      throw error;
+    }
   },
 
   getTransactionsByOwnerId: (ownerId) => {
@@ -37,32 +59,37 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
     return transactions.filter((t) => t.ownerId === ownerId);
   },
 
-  updateTransaction: (id, updates) => {
-    set((state) => {
-      const newTransactions = state.transactions.map((t) =>
-        t.id === id ? { ...t, ...updates } : t
-      );
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(
-          'habitatsconnect_transactions',
-          JSON.stringify(newTransactions)
-        );
-      }
-      return { transactions: newTransactions };
-    });
+  updateTransaction: async (id, updates) => {
+    try {
+      const transactionRef = doc(db, 'transactions', id);
+      await updateDoc(transactionRef, {
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      });
+
+      set((state) => ({
+        transactions: state.transactions.map((t) => (t.id === id ? { ...t, ...updates } : t)),
+      }));
+    } catch (error: any) {
+      console.error('Error updating transaction:', error);
+      set({ error: error.message });
+      throw error;
+    }
   },
 
-  deleteTransaction: (id) => {
-    set((state) => {
-      const newTransactions = state.transactions.filter((t) => t.id !== id);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(
-          'habitatsconnect_transactions',
-          JSON.stringify(newTransactions)
-        );
-      }
-      return { transactions: newTransactions };
-    });
+  deleteTransaction: async (id) => {
+    try {
+      const transactionRef = doc(db, 'transactions', id);
+      await deleteDoc(transactionRef);
+
+      set((state) => ({
+        transactions: state.transactions.filter((t) => t.id !== id),
+      }));
+    } catch (error: any) {
+      console.error('Error deleting transaction:', error);
+      set({ error: error.message });
+      throw error;
+    }
   },
 
   loadTransactions: async (ownerId: string) => {
@@ -73,50 +100,66 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
 
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`/api/transactions?ownerId=${ownerId}`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        const transactions = (data.transactions || []).map((t: any) => ({
-          ...t,
-          id: t.id || t._id,
-          createdAt: t.createdAt ? new Date(t.createdAt) : new Date(),
-          updatedAt: t.updatedAt ? new Date(t.updatedAt) : new Date(),
-        }));
-        set({ transactions, loading: false });
-      } else {
-        throw new Error('Failed to load transactions');
-      }
+      const transactionsRef = collection(db, 'transactions');
+      const q = query(transactionsRef, where('ownerId', '==', ownerId));
+      const querySnapshot = await getDocs(q);
+
+      const transactions: Transaction[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        transactions.push({
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt),
+          updatedAt: data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt),
+        } as Transaction);
+      });
+
+      set({ transactions, loading: false });
     } catch (error: any) {
       console.error('Error loading transactions:', error);
-      set({ error: error.message || 'Failed to load transactions', loading: false });
-      
-      // Fallback to localStorage
-      if (typeof window !== 'undefined') {
-        try {
-          const stored = localStorage.getItem('habitatsconnect_transactions');
-          if (stored) {
-            const transactions = JSON.parse(stored).map((t: any) => ({
-              ...t,
-              createdAt: t.createdAt ? new Date(t.createdAt) : new Date(),
-              updatedAt: t.updatedAt ? new Date(t.updatedAt) : new Date(),
-            }));
-            set({ transactions, loading: false });
-          }
-        } catch (e) {
-          console.error('Fallback error:', e);
-        }
-      }
+      set({ error: error.message, loading: false });
     }
   },
 
-  saveTransactions: () => {
-    const { transactions } = get();
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(
-        'habitatsconnect_transactions',
-        JSON.stringify(transactions)
-      );
+  subscribeToTransactions: (ownerId: string) => {
+    const currentUnsubscribe = get().unsubscribe;
+    if (currentUnsubscribe) {
+      currentUnsubscribe();
+    }
+
+    const transactionsRef = collection(db, 'transactions');
+    const q = query(transactionsRef, where('ownerId', '==', ownerId));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const transactions: Transaction[] = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          transactions.push({
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt),
+            updatedAt: data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt),
+          } as Transaction);
+        });
+        set({ transactions, loading: false });
+      },
+      (error) => {
+        console.error('Error in transactions subscription:', error);
+        set({ error: error.message, loading: false });
+      }
+    );
+
+    set({ unsubscribe });
+  },
+
+  unsubscribeFromTransactions: () => {
+    const unsubscribe = get().unsubscribe;
+    if (unsubscribe) {
+      unsubscribe();
+      set({ unsubscribe: null });
     }
   },
 

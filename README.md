@@ -5,6 +5,7 @@ Une plateforme complète de gestion immobilière type Airbnb avec une architectu
 ## 🌟 Caractéristiques
 
 ### Pour les Clients
+
 - ✅ Recherche avancée de propriétés
 - ✅ Filtrage par type, prix, localisation
 - ✅ Réservation facile et sécurisée
@@ -13,6 +14,7 @@ Une plateforme complète de gestion immobilière type Airbnb avec une architectu
 - ✅ Historique des réservations
 
 ### Pour les Propriétaires
+
 - ✅ Création d'annonces avec photos
 - ✅ Gestion des propriétés
 - ✅ Calendrier de disponibilité
@@ -21,6 +23,7 @@ Une plateforme complète de gestion immobilière type Airbnb avec une architectu
 - ✅ Historique des revenus
 
 ### Fonctionnalités Générales
+
 - ✅ Authentification sécurisée
 - ✅ Profil utilisateur personnalisé
 - ✅ Notifications en temps réel
@@ -32,18 +35,24 @@ Une plateforme complète de gestion immobilière type Airbnb avec une architectu
 ## 🛠 Stack Technique
 
 **Frontend:**
+
 - Next.js 14
 - React 18
 - TypeScript
 - Tailwind CSS
+- **shadcn/ui** - Modern UI component library
 - React Icons
+- Lucide React (icons)
 - Zustand (State Management)
+- Radix UI (Accessible primitives)
 
-**Backend (À venir):**
-- Node.js / Express
-- MongoDB / PostgreSQL
+**Backend:**
+
+- Firebase / Firestore
+- Firebase Admin SDK
+- Next.js API Routes
 - JWT Authentication
-- File Upload (Cloudinary/AWS S3)
+- File Upload support
 
 ## 📦 Installation
 
@@ -65,12 +74,45 @@ npm run build
 npm start
 ```
 
+## 🎨 UI Library - shadcn/ui
+
+Ce projet utilise **shadcn/ui**, une bibliothèque de composants React moderne et accessible.
+
+**Avantages:**
+
+- ✅ Composants accessibles (Radix UI)
+- ✅ Personnalisables (pas de dépendance npm)
+- ✅ Type-safe avec TypeScript
+- ✅ Compatible Tailwind CSS
+- ✅ Production-ready
+
+**Composants disponibles:**
+
+- Button (avec variante gradient custom)
+- Input / Textarea
+- Card / Badge
+- Label / Separator
+- Select / Avatar
+- Et plus...
+
+📖 **Guide complet:** [SHADCN_MIGRATION.md](./SHADCN_MIGRATION.md)
+
+**Usage rapide:**
+
+```tsx
+import { Button } from '@/components/ui/button';
+
+<Button variant="gradient">Get Started</Button>;
+```
+
 ## 🚀 Déploiement
 
 ### Solution Rapide (Recommandée)
+
 Pour mettre le site en ligne facilement:
 
 1. **Vercel + MongoDB Atlas** (Gratuit)
+
    ```bash
    # Voir DEPLOYMENT_GUIDE.md pour les étapes détaillées
    ```
@@ -139,12 +181,14 @@ habitats-connect/
 ## 🎨 Design System
 
 ### Couleurs
+
 - **Primary:** Bleu Ciel (#0ea5e9)
 - **Secondary:** Rose Bonbon (#ec4899)
 - **Accent:** Ambre Doré (#f59e0b)
 - **Gradient Fluide:** Combination de tous les trois
 
 ### Animations
+
 - Float: Mouvement flottant doux
 - Pulse Glow: Effet luminescent pulsé
 - Slide In: Entrée depuis le côté

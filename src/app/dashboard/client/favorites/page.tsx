@@ -1,79 +1,102 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  FaHeart,
-  FaMapMarkerAlt,
-  FaBed,
-  FaBath,
-  FaRuler,
-  FaStar,
-  FaHome,
-} from 'react-icons/fa';
+import { FaHeart, FaMapMarkerAlt, FaBed, FaBath, FaRuler, FaStar, FaHome } from 'react-icons/fa';
 import Link from 'next/link';
-import { useAuthStore } from '@/store';
+import { useAuthStore, useFavoriteStore } from '@/store';
 import type { Property } from '@/types';
+import { motion } from 'framer-motion';
+import { PRICE_SYMBOL } from '@/lib/static';
 
 export default function FavoritesPage() {
   const { user } = useAuthStore();
-  const [favorites, setFavorites] = useState<Property[]>([]);
+  const { favorites, loading, removeFavorite, subscribeToFavorites, unsubscribeFromFavorites } =
+    useFavoriteStore();
 
   useEffect(() => {
-    // Charger les annonces favoris depuis localStorage
-    if (typeof window !== 'undefined' && user) {
-      const stored = localStorage.getItem(`habitatsconnect_favorites_${user.id}`);
-      if (stored) {
-        try {
-          setFavorites(JSON.parse(stored));
-        } catch (error) {
-          console.error('Erreur lors du chargement des favoris:', error);
-        }
-      }
+    if (user?.id) {
+      // Subscribe to real-time favorites
+      subscribeToFavorites(user.id);
     }
-  }, [user]);
 
-  const handleRemoveFavorite = (propertyId: string) => {
-    const updated = favorites.filter((p) => p.id !== propertyId);
-    setFavorites(updated);
+    return () => {
+      unsubscribeFromFavorites();
+    };
+  }, [user?.id, subscribeToFavorites, unsubscribeFromFavorites]);
 
-    if (typeof window !== 'undefined' && user) {
-      localStorage.setItem(
-        `habitatsconnect_favorites_${user.id}`,
-        JSON.stringify(updated)
-      );
+  const handleRemoveFavorite = async (propertyId: string) => {
+    if (!user?.id) return;
+
+    try {
+      await removeFavorite(user.id, propertyId);
+    } catch (error) {
+      console.error('Erreur lors de la suppression du favori:', error);
+      alert('Erreur lors de la suppression du favori');
     }
   };
 
   if (!user) {
     return (
-      <div className="text-center py-12">
-        <p className="text-lg text-slate-600">
-          Veuillez vous connecter pour voir vos favoris
-        </p>
+      <div className="py-12 text-center">
+        <p className="text-slate-600 text-lg">Veuillez vous connecter pour voir vos favoris</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <motion.div
+      className="space-y-8"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+    >
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-900">Annonces Favoris</h2>
-        <span className="bg-primary-100 text-primary-700 px-4 py-2 rounded-lg font-semibold">
+      <motion.div
+        className="flex justify-between items-center"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <h2 className="font-bold text-slate-900 text-2xl">Annonces Favoris</h2>
+        <motion.span
+          className="bg-primary-100 px-4 py-2 rounded-lg font-semibold text-primary-700"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.2, type: 'spring', stiffness: 200 }}
+        >
           {favorites.length} favoris
-        </span>
-      </div>
+        </motion.span>
+      </motion.div>
 
       {/* Favorites Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {favorites.map((property) => (
-          <div
+      <motion.div
+        className="gap-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: { opacity: 0 },
+          visible: {
+            opacity: 1,
+            transition: {
+              staggerChildren: 0.1,
+            },
+          },
+        }}
+      >
+        {favorites.map((property, index) => (
+          <motion.div
             key={property.id}
-            className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition group"
+            className="group bg-white shadow-md hover:shadow-xl rounded-xl overflow-hidden transition"
+            variants={{
+              hidden: { opacity: 0, y: 30 },
+              visible: { opacity: 1, y: 0 },
+            }}
+            whileHover={{ y: -8, scale: 1.02 }}
+            transition={{ duration: 0.3 }}
           >
             {/* Image */}
-            <div className="relative h-48 bg-slate-200 overflow-hidden">
-              <div
+            <div className="relative bg-slate-200 h-48 overflow-hidden">
+              <motion.div
                 className="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition"
                 style={{
                   backgroundImage: `url(${
@@ -82,78 +105,148 @@ export default function FavoritesPage() {
                       : 'https://via.placeholder.com/500x300?text=No+Image'
                   })`,
                 }}
+                whileHover={{ scale: 1.1 }}
+                transition={{ duration: 0.3 }}
               />
-              <button
+              <motion.button
                 onClick={() => handleRemoveFavorite(property.id)}
-                className="absolute top-4 right-4 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition shadow-lg"
+                className="top-4 right-4 absolute bg-red-500 hover:bg-red-600 shadow-lg p-2 rounded-full text-white transition"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3 + index * 0.1 }}
               >
                 <FaHeart size={18} />
-              </button>
+              </motion.button>
             </div>
 
             {/* Content */}
             <div className="p-5">
-              <h3 className="font-bold text-slate-900 text-lg mb-2">
+              <motion.h3
+                className="mb-2 font-bold text-slate-900 text-lg"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 + index * 0.1 }}
+              >
                 {property.title}
-              </h3>
+              </motion.h3>
 
-              <div className="flex items-center gap-2 text-slate-600 text-sm mb-3">
+              <motion.div
+                className="flex items-center gap-2 mb-3 text-slate-600 text-sm"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 + index * 0.1 }}
+              >
                 <FaMapMarkerAlt className="text-primary-500" />
                 {property.location}
-              </div>
+              </motion.div>
 
               {/* Details Grid */}
-              <div className="grid grid-cols-3 gap-3 mb-4 pb-4 border-b border-slate-200 text-center text-sm">
+              <motion.div
+                className="gap-3 grid grid-cols-3 mb-4 pb-4 border-slate-200 border-b text-sm text-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 + index * 0.1 }}
+              >
                 <div>
-                  <div className="flex items-center justify-center gap-1 text-slate-600">
+                  <div className="flex justify-center items-center gap-1 text-slate-600">
                     <FaBed /> {property.bedrooms}
                   </div>
-                  <div className="text-xs text-slate-500">Chambres</div>
+                  <div className="text-slate-500 text-xs">Chambres</div>
                 </div>
                 <div>
-                  <div className="flex items-center justify-center gap-1 text-slate-600">
+                  <div className="flex justify-center items-center gap-1 text-slate-600">
                     <FaBath /> {property.bathrooms}
                   </div>
-                  <div className="text-xs text-slate-500">Salle(s)</div>
+                  <div className="text-slate-500 text-xs">Salle(s)</div>
                 </div>
                 <div>
-                  <div className="flex items-center justify-center gap-1 text-amber-500">
+                  <div className="flex justify-center items-center gap-1 text-amber-500">
                     <FaStar /> 0
                   </div>
-                  <div className="text-xs text-slate-500">(0)</div>
+                  <div className="text-slate-500 text-xs">(0)</div>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Price */}
-              <div className="text-2xl font-bold text-primary-600 mb-4">
-                ${property.price}<span className="text-sm text-slate-600">/nuit</span>
-              </div>
+              <motion.div
+                className="mb-4 font-bold text-primary-600 text-2xl"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.5 + index * 0.1, type: 'spring', stiffness: 200 }}
+              >
+                {PRICE_SYMBOL}
+                {property.price}
+                <span className="text-slate-600 text-sm">/nuit</span>
+              </motion.div>
 
               {/* Actions */}
-              <Link
-                href={`/properties/${property.id}`}
-                className="block w-full text-center px-3 py-2 bg-primary-50 text-primary-600 rounded-lg hover:bg-primary-100 transition font-semibold text-sm"
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 + index * 0.1 }}
               >
-                Voir l'annonce
-              </Link>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Link
+                    href={`/properties/${property.id}`}
+                    className="block bg-primary-50 hover:bg-primary-100 px-3 py-2 rounded-lg w-full font-semibold text-primary-600 text-sm text-center transition"
+                  >
+                    Voir l'annonce
+                  </Link>
+                </motion.div>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       {favorites.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-xl">
-          <FaHome className="text-6xl text-slate-300 mx-auto mb-4" />
-          <p className="text-xl text-slate-600 font-semibold">Aucun favoris</p>
-          <p className="text-slate-500 mb-6">Vous n'avez pas encore ajouté d'annonce aux favoris</p>
-          <Link
-            href="/properties"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-fluid text-white rounded-lg hover:shadow-lg transition"
+        <motion.div
+          className="bg-white py-12 rounded-xl text-center"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
           >
-            Découvrir les propriétés
-          </Link>
-        </div>
+            <FaHome className="mx-auto mb-4 text-slate-300 text-6xl" />
+          </motion.div>
+          <motion.p
+            className="font-semibold text-slate-600 text-xl"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            Aucun favoris
+          </motion.p>
+          <motion.p
+            className="mb-6 text-slate-500"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            Vous n'avez pas encore ajouté d'annonce aux favoris
+          </motion.p>
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <Link
+              href="/properties"
+              className="inline-flex items-center gap-2 bg-gradient-fluid hover:shadow-lg px-6 py-3 rounded-lg text-white transition"
+            >
+              Découvrir les propriétés
+            </Link>
+          </motion.div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }

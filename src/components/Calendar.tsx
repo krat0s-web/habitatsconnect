@@ -29,7 +29,7 @@ export default function Calendar({
     const propertyReservations = reservations.filter((r) => r.propertyId === propertyId);
 
     propertyReservations.forEach((reservation) => {
-      if (reservation.status !== 'cancelled') {
+      if (reservation.status === 'confirmed' || reservation.status === 'completed') {
         let currentDate = new Date(reservation.checkIn);
         const checkOutDate = new Date(reservation.checkOut);
 
@@ -125,15 +125,15 @@ export default function Calendar({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-md p-6 border border-slate-200">
+    <div className="bg-white shadow-md p-6 border border-slate-200 rounded-xl">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900">Sélectionner vos dates</h3>
+        <div className="flex justify-between items-center">
+          <h3 className="font-bold text-slate-900 text-lg">Sélectionner vos dates</h3>
           {selectedRange.checkIn && (
             <button
               onClick={clearSelection}
-              className="text-sm text-red-600 hover:text-red-700 font-semibold"
+              className="font-semibold text-red-600 hover:text-red-700 text-sm"
             >
               Effacer
             </button>
@@ -142,18 +142,18 @@ export default function Calendar({
 
         {/* Selected Range Display */}
         {(selectedRange.checkIn || selectedRange.checkOut) && (
-          <div className="bg-primary-50 rounded-lg p-4 border border-primary-200">
-            <p className="text-sm text-slate-600 mb-2">
+          <div className="bg-primary-50 p-4 border border-primary-200 rounded-xl">
+            <p className="mb-2 text-slate-600 text-sm">
               <span className="font-semibold text-slate-900">Arrivée:</span>{' '}
               {selectedRange.checkIn?.toLocaleDateString('fr-FR')}
             </p>
             {selectedRange.checkOut && selectedRange.checkIn && (
               <>
-                <p className="text-sm text-slate-600 mb-2">
+                <p className="mb-2 text-slate-600 text-sm">
                   <span className="font-semibold text-slate-900">Départ:</span>{' '}
                   {selectedRange.checkOut?.toLocaleDateString('fr-FR')}
                 </p>
-                <p className="text-sm text-primary-600 font-semibold">
+                <p className="font-semibold text-primary-600 text-sm">
                   {Math.ceil(
                     (selectedRange.checkOut.getTime() - selectedRange.checkIn.getTime()) /
                       (1000 * 60 * 60 * 24)
@@ -168,34 +168,32 @@ export default function Calendar({
         {/* Legend */}
         <div className="flex flex-wrap gap-4 text-sm">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-white border-2 border-primary-500 rounded"></div>
+            <div className="bg-white border-2 border-primary-500 rounded w-4 h-4"></div>
             <span className="text-slate-600">Disponible</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-primary-100 border-2 border-primary-500 rounded"></div>
+            <div className="bg-primary-100 border-2 border-primary-500 rounded w-4 h-4"></div>
             <span className="text-slate-600">Sélectionné</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-red-100 border-2 border-red-500 rounded"></div>
+            <div className="bg-red-100 border-2 border-red-500 rounded w-4 h-4"></div>
             <span className="text-slate-600">Réservé</span>
           </div>
         </div>
 
         {/* Calendar Navigation */}
-        <div className="flex items-center justify-between">
+        <div className="flex justify-between items-center">
           <button
             onClick={handlePrevMonth}
-            className="p-2 hover:bg-slate-100 rounded-lg transition"
+            className="hover:bg-slate-100 p-2 rounded-xl transition"
             title="Mois précédent"
           >
             <FaChevronLeft className="text-slate-600" />
           </button>
-          <h4 className="text-center font-bold text-slate-900 capitalize flex-1">
-            {monthName}
-          </h4>
+          <h4 className="flex-1 font-bold text-slate-900 text-center capitalize">{monthName}</h4>
           <button
             onClick={handleNextMonth}
-            className="p-2 hover:bg-slate-100 rounded-lg transition"
+            className="hover:bg-slate-100 p-2 rounded-xl transition"
             title="Mois suivant"
           >
             <FaChevronRight className="text-slate-600" />
@@ -203,16 +201,16 @@ export default function Calendar({
         </div>
 
         {/* Days Header */}
-        <div className="grid grid-cols-7 gap-2">
+        <div className="gap-2 grid grid-cols-7">
           {['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'].map((day) => (
-            <div key={day} className="text-center text-sm font-bold text-slate-600 py-2">
+            <div key={day} className="py-2 font-bold text-slate-600 text-sm text-center">
               {day}
             </div>
           ))}
         </div>
 
         {/* Calendar Grid */}
-        <div className="grid grid-cols-7 gap-2">
+        <div className="gap-2 grid grid-cols-7">
           {monthDays.map((day, index) => {
             if (day === null) {
               return <div key={`empty-${index}`} className="aspect-square"></div>;
@@ -231,7 +229,7 @@ export default function Calendar({
                 onClick={() => handleDateClick(day)}
                 disabled={reserved || isPast}
                 className={`
-                  aspect-square rounded-lg font-semibold text-sm transition
+                  aspect-square rounded-xl font-semibold text-sm transition
                   flex items-center justify-center
                   ${
                     reserved
@@ -254,9 +252,9 @@ export default function Calendar({
         </div>
 
         {/* Info Text */}
-        <div className="text-xs text-slate-500 text-center">
-          Les dates <span className="font-semibold text-red-600">en rouge</span> sont réservées.
-          Les dates<span className="font-semibold text-slate-400"> grisées</span> sont passées.
+        <div className="text-slate-500 text-xs text-center">
+          Les dates <span className="font-semibold text-red-600">en rouge</span> sont réservées. Les
+          dates<span className="font-semibold text-slate-400"> grisées</span> sont passées.
         </div>
       </div>
     </div>

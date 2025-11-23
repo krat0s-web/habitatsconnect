@@ -1,43 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 
-export async function PATCH(request: NextRequest) {
+export async function PATCH(request: NextRequest, { params }: { params?: { id?: string } }) {
   try {
     const { searchParams } = new URL(request.url);
-    const reservationId = searchParams.get('id');
+    const reservationId = params?.id || searchParams.get('id');
 
     if (!reservationId) {
-      return NextResponse.json(
-        { error: 'Reservation ID is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Reservation ID is required' }, { status: 400 });
     }
 
     const body = await request.json();
     const { status } = body;
 
     if (!status) {
-      return NextResponse.json(
-        { error: 'Status is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Status is required' }, { status: 400 });
     }
 
     // Get reservation
     const resDoc = await adminDb.collection('reservations').doc(reservationId).get();
     if (!resDoc.exists) {
-      return NextResponse.json(
-        { error: 'Reservation not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Reservation not found' }, { status: 404 });
     }
 
     const resData = resDoc.data();
     if (!resData) {
-      return NextResponse.json(
-        { error: 'Invalid reservation data' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid reservation data' }, { status: 400 });
     }
 
     // Update reservation status
@@ -106,10 +94,22 @@ export async function PATCH(request: NextRequest) {
           ...updated,
           property,
           client,
-          checkIn: updated?.checkIn?.toDate(),
-          checkOut: updated?.checkOut?.toDate(),
-          createdAt: updated?.createdAt?.toDate(),
-          updatedAt: updated?.updatedAt?.toDate(),
+          checkIn:
+            updated?.checkIn instanceof Date
+              ? updated.checkIn
+              : updated?.checkIn?.toDate?.() || new Date(updated?.checkIn),
+          checkOut:
+            updated?.checkOut instanceof Date
+              ? updated.checkOut
+              : updated?.checkOut?.toDate?.() || new Date(updated?.checkOut),
+          createdAt:
+            updated?.createdAt instanceof Date
+              ? updated.createdAt
+              : updated?.createdAt?.toDate?.() || new Date(updated?.createdAt),
+          updatedAt:
+            updated?.updatedAt instanceof Date
+              ? updated.updatedAt
+              : updated?.updatedAt?.toDate?.() || new Date(updated?.updatedAt),
         },
         message: 'Reservation updated and transaction created if applicable',
       },
@@ -119,6 +119,33 @@ export async function PATCH(request: NextRequest) {
     console.error('Update reservation error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to update reservation' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: { params?: { id?: string } }) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const reservationId = params?.id || searchParams.get('id');
+
+    if (!reservationId) {
+      return NextResponse.json({ error: 'Reservation ID is required' }, { status: 400 });
+    }
+
+    const resRef = adminDb.collection('reservations').doc(reservationId);
+    const resDoc = await resRef.get();
+    if (!resDoc.exists) {
+      return NextResponse.json({ error: 'Reservation not found' }, { status: 404 });
+    }
+
+    await resRef.delete();
+
+    return NextResponse.json({ message: 'Reservation deleted successfully' }, { status: 200 });
+  } catch (error: any) {
+    console.error('Delete reservation error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to delete reservation' },
       { status: 500 }
     );
   }

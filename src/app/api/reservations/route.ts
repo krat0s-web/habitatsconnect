@@ -19,10 +19,11 @@ export async function GET(request: NextRequest) {
     }
 
     // If ownerId is provided, we need to filter by properties owned by this user
-    // This is complex in NoSQL without denormalization. 
+    // This is complex in NoSQL without denormalization.
     // Strategy: Fetch all properties of owner, then fetch reservations for those properties.
     if (ownerId) {
-      const propertiesSnap = await adminDb.collection('properties')
+      const propertiesSnap = await adminDb
+        .collection('properties')
         .where('ownerId', '==', ownerId)
         .get();
 
@@ -30,9 +31,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ reservations: [] });
       }
 
-      const propertyIds = propertiesSnap.docs.map(doc => doc.id);
+      const propertyIds = propertiesSnap.docs.map((doc) => doc.id);
 
-      // Firestore 'in' query is limited to 10 (or 30) items. 
+      // Firestore 'in' query is limited to 10 (or 30) items.
       // If many properties, we might need multiple queries or client-side filtering.
       // For now, let's assume < 30 properties.
       // Actually, if we have propertyId filter already, we don't need this.
@@ -45,28 +46,32 @@ export async function GET(request: NextRequest) {
           chunks.push(propertyIds.slice(i, i + 10));
         }
 
-        const reservationsPromises = chunks.map(chunk =>
+        const reservationsPromises = chunks.map((chunk) =>
           adminDb.collection('reservations').where('propertyId', 'in', chunk).get()
         );
 
         const snapshots = await Promise.all(reservationsPromises);
-        const allDocs = snapshots.flatMap(snap => snap.docs);
+        const allDocs = snapshots.flatMap((snap) => snap.docs);
 
         // Process docs
-        const reservations = await Promise.all(allDocs.map(async (doc) => {
-          const data = doc.data();
-          return fetchReservationDetails(doc.id, data);
-        }));
+        const reservations = await Promise.all(
+          allDocs.map(async (doc) => {
+            const data = doc.data();
+            return fetchReservationDetails(doc.id, data);
+          })
+        );
 
         return NextResponse.json({ reservations });
       }
     }
 
     const snapshot = await query.get();
-    const reservations = await Promise.all(snapshot.docs.map(async (doc) => {
-      const data = doc.data();
-      return fetchReservationDetails(doc.id, data);
-    }));
+    const reservations = await Promise.all(
+      snapshot.docs.map(async (doc) => {
+        const data = doc.data();
+        return fetchReservationDetails(doc.id, data);
+      })
+    );
 
     return NextResponse.json({ reservations });
   } catch (error: any) {
@@ -109,10 +114,22 @@ async function fetchReservationDetails(id: string, data: any) {
     ...data,
     property,
     client,
-    checkIn: data.checkIn?.toDate(),
-    checkOut: data.checkOut?.toDate(),
-    createdAt: data.createdAt?.toDate(),
-    updatedAt: data.updatedAt?.toDate(),
+    checkIn:
+      data.checkIn instanceof Date
+        ? data.checkIn
+        : data.checkIn?.toDate?.() || new Date(data.checkIn),
+    checkOut:
+      data.checkOut instanceof Date
+        ? data.checkOut
+        : data.checkOut?.toDate?.() || new Date(data.checkOut),
+    createdAt:
+      data.createdAt instanceof Date
+        ? data.createdAt
+        : data.createdAt?.toDate?.() || new Date(data.createdAt),
+    updatedAt:
+      data.updatedAt instanceof Date
+        ? data.updatedAt
+        : data.updatedAt?.toDate?.() || new Date(data.updatedAt),
   } as Reservation;
 }
 
@@ -121,10 +138,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     if (!body.propertyId || !body.clientId) {
-      return NextResponse.json(
-        { error: 'propertyId and clientId are required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'propertyId and clientId are required' }, { status: 400 });
     }
 
     const newReservation = {

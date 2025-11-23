@@ -1,6 +1,7 @@
 # 🔧 Guide Configuration Firebase - Activation API Firestore
 
 ## Problème
+
 ```
 Error: 7 PERMISSION_DENIED: Cloud Firestore API has not been used in project habitats-connect before or it is disabled.
 ```
@@ -50,6 +51,7 @@ Error: 7 PERMISSION_DENIED: Cloud Firestore API has not been used in project hab
 ## Vérification
 
 Une fois activé, vous devriez voir :
+
 ```json
 {
   "status": 200,
@@ -65,6 +67,7 @@ Au lieu de l'erreur PERMISSION_DENIED.
 ## Règles Firestore de sécurité (Important!)
 
 Pour développement local (RISQUÉ - à ne pas utiliser en production):
+
 ```rules
 rules_version = '2';
 service cloud.firestore {
@@ -78,6 +81,7 @@ service cloud.firestore {
 ```
 
 Pour production, utilisez plutôt:
+
 ```rules
 rules_version = '2';
 service cloud.firestore {
@@ -86,20 +90,20 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId;
     }
-    
+
     // Properties owned by users
     match /properties/{propertyId} {
       allow read: if true;  // Everyone can read
       allow write: if request.auth.uid == resource.data.ownerId;
     }
-    
+
     // Reservations
     match /reservations/{reservationId} {
-      allow read: if request.auth.uid == resource.data.clientId || 
+      allow read: if request.auth.uid == resource.data.clientId ||
                      request.auth.uid == resource.data.ownerId;
       allow write: if request.auth.uid == resource.data.clientId;
     }
-    
+
     // Transactions
     match /transactions/{transactionId} {
       allow read, write: if request.auth.uid == resource.data.ownerId;
@@ -115,6 +119,7 @@ service cloud.firestore {
 Après activation, créez les collections suivantes via Firebase Console:
 
 ### 1. **users**
+
 ```json
 {
   "id": "firebaseUserId",
@@ -131,6 +136,7 @@ Après activation, créez les collections suivantes via Firebase Console:
 ```
 
 ### 2. **properties**
+
 ```json
 {
   "title": "Bel appartement",
@@ -152,6 +158,7 @@ Après activation, créez les collections suivantes via Firebase Console:
 ```
 
 ### 3. **reservations**
+
 ```json
 {
   "propertyId": "propertyId",
@@ -161,13 +168,14 @@ Après activation, créez les collections suivantes via Firebase Console:
   "guests": 2,
   "totalPrice": 600,
   "depositAmount": 100,
-  "status": "pending" | "confirmed" | "cancelled",
+  "status": "pending" | "confirmed" | "rejected" | "completed",
   "createdAt": "2025-11-22T...",
   "updatedAt": "2025-11-22T..."
 }
 ```
 
 ### 4. **transactions**
+
 ```json
 {
   "ownerId": "ownerId",
@@ -195,6 +203,7 @@ Après activation, créez les collections suivantes via Firebase Console:
    - Mettez à jour `FIREBASE_SERVICE_ACCOUNT_KEY` dans `.env.local`
 
 2. **Videz le cache**
+
    ```bash
    npm run build
    npm run dev
@@ -204,4 +213,3 @@ Après activation, créez les collections suivantes via Firebase Console:
    - Arrêtez `npm run dev`
    - Attendez 5 secondes
    - Relancez `npm run dev`
-

@@ -5,6 +5,7 @@ import { FaSave, FaTimes, FaImage } from 'react-icons/fa';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore, usePropertyStore } from '@/store';
+import { PRICE_SYMBOL } from '@/lib/static';
 
 interface PropertyForm {
   title: string;
@@ -48,9 +49,10 @@ export default function CreatePropertyPage() {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === 'price' || name === 'bedrooms' || name === 'bathrooms' || name === 'area'
-        ? parseFloat(value)
-        : value,
+      [name]:
+        name === 'price' || name === 'bedrooms' || name === 'bathrooms' || name === 'area'
+          ? parseFloat(value)
+          : value,
     }));
   };
 
@@ -63,10 +65,12 @@ export default function CreatePropertyPage() {
     // Valider que c'est une URL d'image valide
     try {
       new URL(imageUrl);
-      
+
       // Vérifier que l'URL ne contient pas les caractères d'une URL de recherche Google
       if (imageUrl.includes('/search?') || imageUrl.includes('q=')) {
-        setImageError('Cette URL n\'est pas une image directe. Utilisez une URL d\'image (jpg, png, webp, etc.)');
+        setImageError(
+          "Cette URL n'est pas une image directe. Utilisez une URL d'image (jpg, png, webp, etc.)"
+        );
         return;
       }
 
@@ -74,7 +78,7 @@ export default function CreatePropertyPage() {
       setImageUrl('');
       setImageError('');
     } catch {
-      setImageError('URL invalide. Assurez-vous que l\'URL commence par http:// ou https://');
+      setImageError("URL invalide. Assurez-vous que l'URL commence par http:// ou https://");
     }
   };
 
@@ -99,13 +103,14 @@ export default function CreatePropertyPage() {
           .split(',')
           .map((a) => a.trim())
           .filter((a) => a),
-        images: (images.length > 0 ? images : ['https://via.placeholder.com/500x300?text=Propriété']).map(
-          (url, index) => ({
-            url,
-            alt: `Property image ${index + 1}`,
-            order: index + 1,
-          })
-        ),
+        images: (images.length > 0
+          ? images
+          : ['https://via.placeholder.com/500x300?text=Propriété']
+        ).map((url, index) => ({
+          url,
+          alt: `Property image ${index + 1}`,
+          order: index + 1,
+        })),
         ownerId: user.id,
         isAvailable: true,
       };
@@ -142,31 +147,31 @@ export default function CreatePropertyPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="mx-auto max-w-4xl">
       <div className="flex justify-between items-center mb-8">
-        <h2 className="text-3xl font-bold text-slate-900">Créer une Annonce</h2>
+        <h2 className="font-bold text-slate-900 text-3xl">Créer une Annonce</h2>
         <Link
           href="/dashboard/owner/properties"
-          className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"
+          className="flex items-center gap-2 hover:bg-slate-100 px-4 py-2 rounded-lg text-slate-600 transition"
         >
           <FaTimes /> Fermer
         </Link>
       </div>
 
       {success && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800 font-semibold">✓ Annonce créée avec succès!</p>
+        <div className="bg-green-50 mb-6 p-4 border border-green-200 rounded-lg">
+          <p className="font-semibold text-green-800">✓ Annonce créée avec succès!</p>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Basic Info */}
-        <div className="bg-white rounded-xl shadow-md p-8">
-          <h3 className="text-xl font-bold text-slate-900 mb-6">Informations Générales</h3>
+        <div className="bg-white shadow-md p-8 rounded-xl">
+          <h3 className="mb-6 font-bold text-slate-900 text-xl">Informations Générales</h3>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <label className="block mb-2 font-semibold text-slate-700 text-sm">
                 Titre de l'annonce *
               </label>
               <input
@@ -176,12 +181,12 @@ export default function CreatePropertyPage() {
                 onChange={handleChange}
                 placeholder="Ex: Bel appartement au centre-ville"
                 required
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition"
+                className="px-4 py-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 w-full transition"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <label className="block mb-2 font-semibold text-slate-700 text-sm">
                 Description *
               </label>
               <textarea
@@ -191,20 +196,20 @@ export default function CreatePropertyPage() {
                 placeholder="Décrivez votre propriété en détail..."
                 required
                 rows={4}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition"
+                className="px-4 py-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 w-full transition"
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="gap-4 grid grid-cols-1 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <label className="block mb-2 font-semibold text-slate-700 text-sm">
                   Type de propriété *
                 </label>
                 <select
                   name="type"
                   value={formData.type}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition"
+                  className="px-4 py-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 w-full transition"
                 >
                   <option value="apartment">Appartement</option>
                   <option value="villa">Villa</option>
@@ -214,8 +219,8 @@ export default function CreatePropertyPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Prix par nuit (€) *
+                <label className="block mb-2 font-semibold text-slate-700 text-sm">
+                  Prix par nuit ({PRICE_SYMBOL}) *
                 </label>
                 <input
                   type="number"
@@ -224,7 +229,7 @@ export default function CreatePropertyPage() {
                   onChange={handleChange}
                   min="0"
                   required
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition"
+                  className="px-4 py-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 w-full transition"
                 />
               </div>
             </div>
@@ -232,12 +237,12 @@ export default function CreatePropertyPage() {
         </div>
 
         {/* Location */}
-        <div className="bg-white rounded-xl shadow-md p-8">
-          <h3 className="text-xl font-bold text-slate-900 mb-6">Localisation</h3>
+        <div className="bg-white shadow-md p-8 rounded-xl">
+          <h3 className="mb-6 font-bold text-slate-900 text-xl">Localisation</h3>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <label className="block mb-2 font-semibold text-slate-700 text-sm">
                 Ville/Région *
               </label>
               <input
@@ -247,12 +252,12 @@ export default function CreatePropertyPage() {
                 onChange={handleChange}
                 placeholder="Ex: Paris 6ème"
                 required
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition"
+                className="px-4 py-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 w-full transition"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <label className="block mb-2 font-semibold text-slate-700 text-sm">
                 Adresse complète *
               </label>
               <input
@@ -262,21 +267,19 @@ export default function CreatePropertyPage() {
                 onChange={handleChange}
                 placeholder="Ex: 123 Rue de la Paix"
                 required
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition"
+                className="px-4 py-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 w-full transition"
               />
             </div>
           </div>
         </div>
 
         {/* Details */}
-        <div className="bg-white rounded-xl shadow-md p-8">
-          <h3 className="text-xl font-bold text-slate-900 mb-6">Détails de la Propriété</h3>
+        <div className="bg-white shadow-md p-8 rounded-xl">
+          <h3 className="mb-6 font-bold text-slate-900 text-xl">Détails de la Propriété</h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="gap-4 grid grid-cols-1 md:grid-cols-3">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Chambres *
-              </label>
+              <label className="block mb-2 font-semibold text-slate-700 text-sm">Chambres *</label>
               <input
                 type="number"
                 name="bedrooms"
@@ -284,12 +287,12 @@ export default function CreatePropertyPage() {
                 onChange={handleChange}
                 min="0"
                 required
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition"
+                className="px-4 py-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 w-full transition"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <label className="block mb-2 font-semibold text-slate-700 text-sm">
                 Salles de bain *
               </label>
               <input
@@ -299,12 +302,12 @@ export default function CreatePropertyPage() {
                 onChange={handleChange}
                 min="0"
                 required
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition"
+                className="px-4 py-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 w-full transition"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <label className="block mb-2 font-semibold text-slate-700 text-sm">
                 Surface (m²) *
               </label>
               <input
@@ -314,13 +317,13 @@ export default function CreatePropertyPage() {
                 onChange={handleChange}
                 min="0"
                 required
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition"
+                className="px-4 py-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 w-full transition"
               />
             </div>
           </div>
 
           <div className="mt-4">
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
+            <label className="block mb-2 font-semibold text-slate-700 text-sm">
               Équipements (séparés par des virgules)
             </label>
             <input
@@ -329,14 +332,14 @@ export default function CreatePropertyPage() {
               value={formData.amenities}
               onChange={handleChange}
               placeholder="Ex: WiFi, Parking, Piscine, Cuisine équipée"
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition"
+              className="px-4 py-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 w-full transition"
             />
           </div>
         </div>
 
         {/* Images */}
-        <div className="bg-white rounded-xl shadow-md p-8">
-          <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+        <div className="bg-white shadow-md p-8 rounded-xl">
+          <h3 className="flex items-center gap-2 mb-6 font-bold text-slate-900 text-xl">
             <FaImage /> Photos de la Propriété
           </h3>
 
@@ -347,36 +350,36 @@ export default function CreatePropertyPage() {
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
                 placeholder="Collez l'URL d'une image (https://...)"
-                className="flex-1 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition"
+                className="flex-1 px-4 py-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 transition"
               />
               <button
                 type="button"
                 onClick={handleAddImage}
-                className="px-6 py-3 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition font-semibold"
+                className="bg-primary-500 hover:bg-primary-600 px-6 py-3 rounded-lg font-semibold text-white transition"
               >
                 Ajouter
               </button>
             </div>
 
             {imageError && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-700 font-semibold">{imageError}</p>
+              <div className="bg-red-50 p-3 border border-red-200 rounded-lg">
+                <p className="font-semibold text-red-700 text-sm">{imageError}</p>
               </div>
             )}
 
             {images.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="gap-4 grid grid-cols-2 md:grid-cols-4">
                 {images.map((image, index) => (
-                  <div key={index} className="relative group">
+                  <div key={index} className="group relative">
                     <img
                       src={image}
                       alt={`Image ${index + 1}`}
-                      className="w-full h-24 object-cover rounded-lg"
+                      className="rounded-lg w-full h-24 object-cover"
                     />
                     <button
                       type="button"
                       onClick={() => handleRemoveImage(index)}
-                      className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition"
+                      className="top-1 right-1 absolute bg-red-500 opacity-0 group-hover:opacity-100 p-1 rounded-full text-white transition"
                     >
                       <FaTimes size={12} />
                     </button>
@@ -385,9 +388,11 @@ export default function CreatePropertyPage() {
               </div>
             )}
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800 font-semibold mb-2">💡 Conseils pour les URLs d'images:</p>
-              <ul className="text-sm text-blue-700 space-y-1 ml-4">
+            <div className="bg-blue-50 p-4 border border-blue-200 rounded-lg">
+              <p className="mb-2 font-semibold text-blue-800 text-sm">
+                💡 Conseils pour les URLs d'images:
+              </p>
+              <ul className="space-y-1 ml-4 text-blue-700 text-sm">
                 <li>• Utilisez des URLs d'images directes (jpg, png, webp, etc.)</li>
                 <li>• Les URLs de recherche Google ne fonctionnent pas</li>
                 <li>• Exemples de sources valides:</li>
@@ -397,7 +402,7 @@ export default function CreatePropertyPage() {
               </ul>
             </div>
 
-            <p className="text-sm text-slate-500">
+            <p className="text-slate-500 text-sm">
               Minimum 1 image recommandée. Les images de haute qualité attirent plus de clients.
             </p>
           </div>
@@ -408,13 +413,13 @@ export default function CreatePropertyPage() {
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-gradient-fluid text-white rounded-lg hover:shadow-lg transition font-bold text-lg disabled:opacity-50"
+            className="flex flex-1 justify-center items-center gap-2 bg-gradient-fluid disabled:opacity-50 hover:shadow-lg px-6 py-4 rounded-lg font-bold text-white text-lg transition"
           >
-            <FaSave /> {loading ? 'Création en cours...' : 'Créer l\'annonce'}
+            <FaSave /> {loading ? 'Création en cours...' : "Créer l'annonce"}
           </button>
           <Link
             href="/dashboard/owner/properties"
-            className="flex items-center justify-center px-6 py-4 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition font-bold"
+            className="flex justify-center items-center bg-slate-200 hover:bg-slate-300 px-6 py-4 rounded-lg font-bold text-slate-700 transition"
           >
             <FaTimes /> Annuler
           </Link>

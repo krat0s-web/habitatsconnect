@@ -12,40 +12,39 @@ import {
 } from 'react-icons/fa';
 import { useAuthStore, useTransactionStore } from '@/store';
 import type { Transaction } from '@/types';
+import { PRICE_SYMBOL } from '@/lib/static';
 
 export default function TreasuryPage() {
   const { user } = useAuthStore();
-  const { transactions, loadTransactions, getTransactionsByOwnerId } = useTransactionStore();
-  const [displayedTransactions, setDisplayedTransactions] = useState<Transaction[]>([]);
+  const { transactions, subscribeToTransactions, unsubscribeFromTransactions } =
+    useTransactionStore();
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
 
   useEffect(() => {
     if (user?.id) {
-      loadTransactions(user.id);
+      // Subscribe to real-time transactions for this owner
+      subscribeToTransactions(user.id);
     }
-  }, [user?.id, loadTransactions]);
 
-  useEffect(() => {
-    if (user?.id) {
-      const ownerTransactions = getTransactionsByOwnerId(user.id);
-      setDisplayedTransactions(ownerTransactions);
-    }
-  }, [user?.id, transactions, getTransactionsByOwnerId]);
+    return () => {
+      unsubscribeFromTransactions();
+    };
+  }, [user?.id, subscribeToTransactions, unsubscribeFromTransactions]);
 
-  const filteredTransactions = displayedTransactions.filter((t) => {
+  const filteredTransactions = transactions.filter((t) => {
     if (filter === 'all') return true;
     return t.type === filter;
   });
 
-  const totalIncome = displayedTransactions
+  const totalIncome = transactions
     .filter((t) => t.type === 'income' && t.status === 'completed')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const totalPending = displayedTransactions
+  const totalPending = transactions
     .filter((t) => t.type === 'income' && t.status === 'pending')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const totalExpense = displayedTransactions
+  const totalExpense = transactions
     .filter((t) => t.type === 'expense' && t.status === 'completed')
     .reduce((sum, t) => sum + t.amount, 0);
 
@@ -55,19 +54,19 @@ export default function TreasuryPage() {
     switch (status) {
       case 'completed':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+          <span className="inline-flex items-center gap-1 bg-green-100 px-3 py-1 rounded-full font-semibold text-green-700 text-sm">
             <FaCheckCircle /> Complété
           </span>
         );
       case 'pending':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-semibold">
+          <span className="inline-flex items-center gap-1 bg-yellow-100 px-3 py-1 rounded-full font-semibold text-yellow-700 text-sm">
             <FaClock /> En attente
           </span>
         );
       case 'cancelled':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-semibold">
+          <span className="inline-flex items-center gap-1 bg-red-100 px-3 py-1 rounded-full font-semibold text-red-700 text-sm">
             ✕ Annulé
           </span>
         );
@@ -80,63 +79,67 @@ export default function TreasuryPage() {
     <div className="space-y-8">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-900">Trésorerie</h2>
-        <button className="flex items-center gap-2 px-6 py-3 bg-primary-50 text-primary-600 rounded-lg hover:bg-primary-100 transition font-semibold">
+        <h2 className="font-bold text-slate-900 text-2xl">Trésorerie</h2>
+        <button className="flex items-center gap-2 bg-primary-50 hover:bg-primary-100 px-6 py-3 rounded-lg font-semibold text-primary-600 transition">
           <FaDownload /> Télécharger Relevé
         </button>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="gap-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
         {/* Total Income */}
-        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-md p-6 border-l-4 border-green-500">
-          <div className="flex items-center justify-between">
+        <div className="bg-gradient-to-br from-green-50 to-green-100 shadow-md p-6 border-green-500 border-l-4 rounded-xl">
+          <div className="flex justify-between items-center">
             <div>
-              <div className="text-sm text-green-600 font-semibold">Revenus Reçus</div>
-              <div className="text-3xl font-bold text-green-900 mt-2">
-                {totalIncome.toLocaleString()}€
+              <div className="font-semibold text-green-600 text-sm">Revenus Reçus</div>
+              <div className="mt-2 font-bold text-green-900 text-3xl">
+                {totalIncome.toLocaleString()}
+                {PRICE_SYMBOL}
               </div>
             </div>
-            <FaEuroSign className="text-5xl text-green-200" />
+            <FaEuroSign className="text-green-200 text-5xl" />
           </div>
         </div>
 
         {/* Pending Income */}
-        <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl shadow-md p-6 border-l-4 border-yellow-500">
-          <div className="flex items-center justify-between">
+        <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 shadow-md p-6 border-yellow-500 border-l-4 rounded-xl">
+          <div className="flex justify-between items-center">
             <div>
-              <div className="text-sm text-yellow-600 font-semibold">En Attente</div>
-              <div className="text-3xl font-bold text-yellow-900 mt-2">
-                {totalPending.toLocaleString()}€
+              <div className="font-semibold text-yellow-600 text-sm">En Attente</div>
+              <div className="mt-2 font-bold text-yellow-900 text-3xl">
+                {totalPending.toLocaleString()}
+                {PRICE_SYMBOL}
               </div>
             </div>
-            <FaClock className="text-5xl text-yellow-200" />
+            <FaClock className="text-yellow-200 text-5xl" />
           </div>
         </div>
 
         {/* Total Expense */}
-        <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl shadow-md p-6 border-l-4 border-red-500">
-          <div className="flex items-center justify-between">
+        <div className="bg-gradient-to-br from-red-50 to-red-100 shadow-md p-6 border-red-500 border-l-4 rounded-xl">
+          <div className="flex justify-between items-center">
             <div>
-              <div className="text-sm text-red-600 font-semibold">Frais & Dépenses</div>
-              <div className="text-3xl font-bold text-red-900 mt-2">
-                {totalExpense.toLocaleString()}€
+              <div className="font-semibold text-red-600 text-sm">Frais & Dépenses</div>
+              <div className="mt-2 font-bold text-red-900 text-3xl">
+                {totalExpense.toLocaleString()}
+                {PRICE_SYMBOL}
               </div>
             </div>
-            <FaWallet className="text-5xl text-red-200" />
+            <FaWallet className="text-red-200 text-5xl" />
           </div>
         </div>
 
         {/* Net Balance */}
-        <div className="bg-gradient-fluid rounded-xl shadow-md p-6 border-l-4 border-primary-600">
-          <div className="flex items-center justify-between">
+        <div className="bg-gradient-fluid shadow-md p-6 border-primary-600 border-l-4 rounded-xl">
+          <div className="flex justify-between items-center">
             <div>
-              <div className="text-sm text-white font-semibold opacity-90">Solde Net</div>
-              <div className="text-3xl font-bold text-white mt-2">
-                {netBalance.toLocaleString()}€
+              <div className="opacity-90 font-semibold text-white text-sm">Solde Net</div>
+              <div className="mt-2 font-bold text-white text-3xl">
+                {netBalance.toLocaleString()}
+                {PRICE_SYMBOL}
               </div>
             </div>
-            <FaChartLine className="text-5xl text-white opacity-30" />
+            <FaChartLine className="opacity-30 text-white text-5xl" />
           </div>
         </div>
       </div>
@@ -161,46 +164,39 @@ export default function TreasuryPage() {
       </div>
 
       {/* Transactions Table */}
-      <div className="bg-white rounded-xl shadow-md overflow-hidden">
+      <div className="bg-white shadow-md rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-slate-50 border-slate-200 border-b">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">
+                <th className="px-6 py-4 font-bold text-slate-700 text-sm text-left">
                   <FaCalendar className="inline mr-2" /> Date
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">
+                <th className="px-6 py-4 font-bold text-slate-700 text-sm text-left">
                   Description
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">
-                  Statut
-                </th>
-                <th className="px-6 py-4 text-right text-sm font-bold text-slate-700">
-                  Montant
-                </th>
+                <th className="px-6 py-4 font-bold text-slate-700 text-sm text-left">Statut</th>
+                <th className="px-6 py-4 font-bold text-slate-700 text-sm text-right">Montant</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {filteredTransactions.map((transaction) => (
                 <tr key={transaction.id} className="hover:bg-slate-50 transition">
-                  <td className="px-6 py-4 text-sm text-slate-600">
+                  <td className="px-6 py-4 text-slate-600 text-sm">
                     {new Date(transaction.date).toLocaleDateString('fr-FR')}
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-900 font-medium">
+                  <td className="px-6 py-4 font-medium text-slate-900 text-sm">
                     {transaction.description}
                   </td>
-                  <td className="px-6 py-4 text-sm">
-                    {getStatusBadge(transaction.status)}
-                  </td>
+                  <td className="px-6 py-4 text-sm">{getStatusBadge(transaction.status)}</td>
                   <td
                     className={`px-6 py-4 text-right text-sm font-bold ${
-                      transaction.type === 'income'
-                        ? 'text-green-600'
-                        : 'text-red-600'
+                      transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
                     }`}
                   >
                     {transaction.type === 'income' ? '+' : '-'}
-                    {transaction.amount.toLocaleString()}€
+                    {transaction.amount.toLocaleString()}
+                    {PRICE_SYMBOL}
                   </td>
                 </tr>
               ))}
@@ -210,9 +206,9 @@ export default function TreasuryPage() {
       </div>
 
       {filteredTransactions.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-xl">
-          <FaWallet className="text-6xl text-slate-300 mx-auto mb-4" />
-          <p className="text-xl text-slate-600 font-semibold">Aucune transaction</p>
+        <div className="bg-white py-12 rounded-xl text-center">
+          <FaWallet className="mx-auto mb-4 text-slate-300 text-6xl" />
+          <p className="font-semibold text-slate-600 text-xl">Aucune transaction</p>
         </div>
       )}
     </div>

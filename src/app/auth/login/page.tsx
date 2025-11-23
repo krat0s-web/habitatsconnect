@@ -5,6 +5,10 @@ import { FaEnvelope, FaLock, FaArrowRight } from 'react-icons/fa';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -18,7 +22,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     await login(email, password, role);
-    
+
     // Attendre un peu pour vérifier si le login a réussi
     setTimeout(() => {
       const { user } = useAuthStore.getState();
@@ -30,130 +34,123 @@ export default function LoginPage() {
           router.push('/');
         }
       } else {
-        setError(authError || 'Utilisateur non trouvé. Veuillez vous inscrire d\'abord.');
+        setError(authError || "Utilisateur non trouvé. Veuillez vous inscrire d'abord.");
       }
     }, 500);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-secondary-50 flex items-center justify-center px-4 sm:px-6 lg:px-8">
+    <div className="flex justify-center items-center bg-gradient-to-br from-primary-50 to-secondary-50 px-4 sm:px-6 lg:px-8 min-h-screen">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl p-8 sm:p-10">
+        <Card className="p-8 sm:p-10">
           {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">
-              Bienvenue
-            </h1>
-            <p className="text-slate-600">
-              Connectez-vous à votre compte HabitatsConnect
-            </p>
+          <div className="mb-8 text-center">
+            <h1 className="mb-2 font-bold text-slate-900 text-3xl">Bienvenue</h1>
+            <p className="text-slate-600">Connectez-vous à votre compte HabitatsConnect</p>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4 mb-6">
             {/* Error Message */}
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-800 text-sm font-semibold">{error}</p>
+              <div className="bg-red-50 p-3 border border-red-200 rounded-lg">
+                <p className="font-semibold text-red-800 text-sm">{error}</p>
               </div>
             )}
             {/* Email */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <Label htmlFor="email" className="flex items-center mb-2 text-slate-700">
                 <FaEnvelope className="inline mr-2" /> Email
-              </label>
-              <input
+              </Label>
+              <Input
+                id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="votre@email.com"
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                className="h-11"
                 required
               />
             </div>
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <Label htmlFor="password" className="flex items-center mb-2 text-slate-700">
                 <FaLock className="inline mr-2" /> Mot de passe
-              </label>
-              <input
+              </Label>
+              <Input
+                id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                className="h-11"
                 required
               />
             </div>
 
             {/* Role Selection */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Je suis...
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
+              <label className="block mb-2 font-semibold text-slate-700 text-sm">Je suis...</label>
+              <div className="gap-3 grid grid-cols-2">
+                <Button
                   type="button"
+                  variant={role === 'client' ? 'default' : 'outline'}
                   onClick={() => setRole('client')}
-                  className={`py-2 px-3 rounded-lg font-semibold text-sm transition ${
+                  className={
                     role === 'client'
                       ? 'bg-primary-100 text-primary-700 border-2 border-primary-500'
-                      : 'bg-slate-100 text-slate-700 border-2 border-transparent hover:bg-slate-200'
-                  }`}
+                      : ''
+                  }
                 >
                   Client
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant={role === 'owner' ? 'default' : 'outline'}
                   onClick={() => setRole('owner')}
-                  className={`py-2 px-3 rounded-lg font-semibold text-sm transition ${
+                  className={
                     role === 'owner'
                       ? 'bg-secondary-100 text-secondary-700 border-2 border-secondary-500'
-                      : 'bg-slate-100 text-slate-700 border-2 border-transparent hover:bg-slate-200'
-                  }`}
+                      : ''
+                  }
                 >
                   Propriétaire
-                </button>
+                </Button>
               </div>
             </div>
 
             {/* Remember Me & Forgot Password */}
-            <div className="flex items-center justify-between text-sm">
+            <div className="flex justify-between items-center text-sm">
               <label className="flex items-center gap-2 text-slate-700 cursor-pointer">
-                <input type="checkbox" className="w-4 h-4 rounded" />
+                <input type="checkbox" className="rounded w-4 h-4" />
                 Se souvenir de moi
               </label>
               <Link
                 href="/forgot-password"
-                className="text-primary-600 hover:text-primary-700 font-semibold"
+                className="font-semibold text-primary-600 hover:text-primary-700"
               >
                 Mot de passe oublié?
               </Link>
             </div>
 
             {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3 bg-gradient-fluid text-white font-bold rounded-lg hover:shadow-lg transition flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {isLoading ? 'Connexion...' : 'Se connecter'}{' '}
-              <FaArrowRight />
-            </button>
+            <Button type="submit" variant="gradient" disabled={isLoading} className="w-full h-11">
+              {isLoading ? 'Connexion...' : 'Se connecter'} <FaArrowRight className="ml-2" />
+            </Button>
           </form>
 
           {/* Footer */}
-          <p className="text-center text-slate-600">
+          <p className="text-slate-600 text-center">
             Pas de compte?{' '}
             <Link
               href="/auth/register"
-              className="text-primary-600 hover:text-primary-700 font-semibold"
+              className="font-semibold text-primary-600 hover:text-primary-700"
             >
               S&apos;inscrire
             </Link>
           </p>
-        </div>
+        </Card>
       </div>
     </div>
   );

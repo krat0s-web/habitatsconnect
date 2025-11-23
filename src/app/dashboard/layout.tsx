@@ -1,8 +1,6 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import {
-  FaHome,
   FaBars,
   FaTimes,
   FaBuilding,
@@ -17,22 +15,16 @@ import {
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
-
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+import { motion, AnimatePresence } from 'framer-motion';
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout, isAuthenticated } = useAuthStore();
-
+  const { user, logout } = useAuthStore();
   useEffect(() => {
     setMounted(true);
   }, []);
-
   // Menu pour les propriétaires
   const ownerMenuItems = [
     { href: '/dashboard/owner/properties', label: 'Mes Annonces', icon: FaBuilding },
@@ -41,7 +33,6 @@ export default function DashboardLayout({
     { href: '/dashboard/owner/treasury', label: 'Trésorerie', icon: FaWallet },
     { href: '/dashboard/owner/chat', label: 'Chat', icon: FaComments },
   ];
-
   // Menu pour les clients
   const clientMenuItems = [
     { href: '/dashboard/client/reservations', label: 'Mes Réservations', icon: FaCalendarAlt },
@@ -50,102 +41,168 @@ export default function DashboardLayout({
     { href: '/dashboard/client/profile', label: 'Mon Profil', icon: FaUser },
     { href: '/dashboard/client/chat', label: 'Messages', icon: FaComments },
   ];
-
   const menuItems = user?.role === 'owner' ? ownerMenuItems : clientMenuItems;
-
   const handleLogout = () => {
     logout();
     router.push('/');
   };
-
   const displayName = user ? `${user.firstName} ${user.lastName}` : 'Utilisateur';
   const dashboardTitle = user?.role === 'owner' ? 'Dashboard Propriétaire' : 'Mon Dashboard';
-
   if (!mounted) {
     return null;
   }
-
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex items-stretch bg-slate-50 h-full overflow-hidden">
       {/* Sidebar */}
-      <aside
-        className={`${
-          sidebarOpen ? 'w-64' : 'w-20'
-        } bg-gradient-to-b from-primary-900 to-primary-800 text-white transition-all duration-300 flex flex-col shadow-xl`}
-      >
-        {/* Logo */}
-        <div className="p-4 border-b border-primary-700 flex items-center justify-between">
-          <div className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center w-full'}`}>
-            <div className="bg-white/20 p-2 rounded-lg">
-              <FaHome className="text-xl" />
-            </div>
-            {sidebarOpen && (
-              <span className="font-bold text-lg">HabitatsConnect</span>
-            )}
-          </div>
-        </div>
-
-        {/* Menu */}
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-                  isActive
-                    ? 'bg-white/20 border-l-4 border-accent-400'
-                    : 'hover:bg-white/10'
-                }`}
-              >
-                <Icon className="text-lg flex-shrink-0" />
-                {sidebarOpen && <span className="font-medium">{item.label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Logout */}
-        <div className="p-4 border-t border-primary-700">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-white/10 transition text-red-300"
-          >
-            <FaSignOutAlt className="text-lg flex-shrink-0" />
-            {sidebarOpen && <span className="font-medium">Déconnexion</span>}
-          </button>
-        </div>
-
-        {/* Toggle Button */}
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="absolute -right-4 top-24 bg-primary-700 p-2 rounded-full hover:bg-primary-600 transition"
+      <AnimatePresence mode="wait">
+        <motion.aside
+          key={sidebarOpen ? 'open' : 'closed'}
+          initial={{ width: sidebarOpen ? 256 : 80 }}
+          animate={{ width: sidebarOpen ? 256 : 80 }}
+          exit={{ width: sidebarOpen ? 256 : 80 }}
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
+          className="flex flex-col bg-gradient-to-b from-primary-900 to-primary-800 shadow-xl rounded-r-2xl h-full overflow-hidden text-white"
         >
-          {sidebarOpen ? <FaTimes size={18} /> : <FaBars size={18} />}
-        </button>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        {/* Top Bar */}
-        <div className="bg-white border-b border-slate-200 px-8 py-4 shadow-sm sticky top-0 z-40">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-slate-900">
-              {dashboardTitle}
-            </h1>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-slate-600">{displayName}</span>
-              <div className="w-10 h-10 bg-gradient-fluid rounded-full"></div>
+          {/* Logo */}
+          <motion.div
+            className="flex justify-between items-center p-4 border-primary-700 border-b rounded-tr-2xl"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <div className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center w-full'}`}>
+              <motion.div
+                className="bg-white/20 hover:bg-white/30 p-2 rounded-xl transition cursor-pointer"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                {sidebarOpen ? <FaTimes size={18} /> : <FaBars size={18} />}
+              </motion.div>
+              <AnimatePresence>
+                {sidebarOpen && (
+                  <motion.span
+                    className="font-bold text-lg"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    HabitatsConnect
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </div>
+          </motion.div>
+          {/* Menu */}
+          <nav className="flex-1 space-y-2 p-4 h-full overflow-y-auto">
+            {menuItems.map((item, index) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href;
+              return (
+                <motion.div
+                  key={item.href}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                >
+                  <Link
+                    href={item.href}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                      isActive
+                        ? 'bg-white/20 border-l-4 border-accent-400 shadow-lg'
+                        : 'hover:bg-white/10 hover:shadow-md'
+                    }`}
+                  >
+                    <motion.div whileHover={{ scale: 1.1 }} transition={{ duration: 0.2 }}>
+                      <Icon className="flex-shrink-0 text-lg" />
+                    </motion.div>
+                    <AnimatePresence>
+                      {sidebarOpen && (
+                        <motion.span
+                          className="font-medium"
+                          initial={{ opacity: 0, width: 0 }}
+                          animate={{ opacity: 1, width: 'auto' }}
+                          exit={{ opacity: 0, width: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          {item.label}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </Link>
+                </motion.div>
+              );
+            })}
+          </nav>
+          {/* Logout */}
+          <motion.div
+            className="p-4 border-primary-700 border-t rounded-br-2xl"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.5 }}
+          >
+            <motion.button
+              onClick={handleLogout}
+              className="flex items-center gap-3 hover:bg-red-500/20 hover:shadow-md px-4 py-3 rounded-xl w-full text-red-300 hover:text-red-200 transition-all duration-200"
+              whileHover={{ scale: 1.02, backgroundColor: 'rgba(239, 68, 68, 0.2)' }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <FaSignOutAlt className="flex-shrink-0 text-lg" />
+              <AnimatePresence>
+                {sidebarOpen && (
+                  <motion.span
+                    className="font-medium"
+                    initial={{ opacity: 0, width: 0 }}
+                    animate={{ opacity: 1, width: 'auto' }}
+                    exit={{ opacity: 0, width: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    Déconnexion
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </motion.button>
+          </motion.div>
+        </motion.aside>
+      </AnimatePresence>
+      {/* Main Content */}
+      <main className="flex flex-col flex-1">
+        {/* Top Bar */}
+        <motion.div
+          className="top-0 z-40 sticky bg-white shadow-lg px-8 py-4 border-slate-200 border-b rounded-tl-2xl"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <div className="flex justify-between items-center">
+            <motion.h1
+              className="font-bold text-slate-900 text-2xl"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4, delay: 0.3 }}
+            >
+              {dashboardTitle}
+            </motion.h1>
+            <motion.div
+              className="flex items-center gap-4"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4, delay: 0.4 }}
+            >
+              <span className="text-slate-600 text-sm">{displayName}</span>
+            </motion.div>
           </div>
-        </div>
-
+        </motion.div>
         {/* Content */}
-        <div className="p-8">
+        <motion.div
+          className="bg-slate-50 p-8 rounded-bl-2xl h-full overflow-y-auto"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+        >
           {children}
-        </div>
+        </motion.div>
       </main>
     </div>
   );

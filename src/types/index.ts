@@ -45,7 +45,7 @@ export interface Property {
 }
 
 // Reservation Types
-export type ReservationStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
+export type ReservationStatus = 'pending' | 'confirmed' | 'rejected' | 'completed';
 
 export interface Reservation {
   id: string;
@@ -124,4 +124,3 @@ export interface Conversation {
   createdAt: Date;
   updatedAt: Date;
 }
-

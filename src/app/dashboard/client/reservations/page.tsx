@@ -1,39 +1,29 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  FaCalendarAlt,
-  FaMapMarkerAlt,
-  FaCheck,
-  FaHourglass,
-  FaTimes,
-} from 'react-icons/fa';
+import { FaCalendarAlt, FaMapMarkerAlt, FaCheck, FaHourglass, FaTimes } from 'react-icons/fa';
 import Link from 'next/link';
 import { useAuthStore, useReservationStore } from '@/store';
 import type { Reservation } from '@/types';
+import { PRICE_SYMBOL } from '@/lib/static';
+import { motion } from 'framer-motion';
 
 export default function ClientReservationsPage() {
   const { user } = useAuthStore();
-  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const { reservations, loading, subscribeToReservations, unsubscribeFromReservations } =
+    useReservationStore();
   const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'completed'>('all');
 
   useEffect(() => {
-    // Charger les réservations du client
-    if (typeof window !== 'undefined' && user) {
-      const stored = localStorage.getItem('habitatsconnect_reservations');
-      if (stored) {
-        try {
-          const allReservations = JSON.parse(stored);
-          const clientReservations = allReservations.filter(
-            (r: any) => r.clientId === user.id
-          );
-          setReservations(clientReservations);
-        } catch (error) {
-          console.error('Erreur lors du chargement des réservations:', error);
-        }
-      }
+    if (user?.id) {
+      // Subscribe to real-time reservations for this client
+      subscribeToReservations(user.id);
     }
-  }, [user]);
+
+    return () => {
+      unsubscribeFromReservations();
+    };
+  }, [user?.id, subscribeToReservations, unsubscribeFromReservations]);
 
   const filteredReservations = reservations.filter((r) => {
     if (filter === 'all') return true;
@@ -44,25 +34,19 @@ export default function ClientReservationsPage() {
     switch (status) {
       case 'confirmed':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+          <span className="inline-flex items-center gap-1 bg-green-100 px-3 py-1 rounded-full font-semibold text-green-700 text-sm">
             <FaCheck /> Confirmée
           </span>
         );
-      case 'pending':
+      case 'confirmed':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-semibold">
-            <FaHourglass /> En attente
-          </span>
-        );
-      case 'cancelled':
-        return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-semibold">
-            <FaTimes /> Annulée
+          <span className="inline-flex items-center gap-1 bg-green-100 px-3 py-1 rounded-full font-semibold text-green-700 text-sm">
+            <FaCheck /> Confirmée
           </span>
         );
       case 'completed':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+          <span className="inline-flex items-center gap-1 bg-blue-100 px-3 py-1 rounded-full font-semibold text-blue-700 text-sm">
             <FaCheck /> Complétée
           </span>
         );
@@ -73,25 +57,38 @@ export default function ClientReservationsPage() {
 
   if (!user) {
     return (
-      <div className="text-center py-12">
-        <p className="text-lg text-slate-600">
-          Veuillez vous connecter pour voir vos réservations
-        </p>
+      <div className="py-12 text-center">
+        <p className="text-slate-600 text-lg">Veuillez vous connecter pour voir vos réservations</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <motion.div
+      className="space-y-8"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+    >
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-900">Mes Réservations</h2>
-      </div>
+      <motion.div
+        className="flex justify-between items-center"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <h2 className="font-bold text-slate-900 text-2xl">Mes Réservations</h2>
+      </motion.div>
 
       {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
-        {(['all', 'pending', 'confirmed', 'completed'] as const).map((filterType) => (
-          <button
+      <motion.div
+        className="flex flex-wrap gap-3"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+      >
+        {(['all', 'pending', 'confirmed', 'completed'] as const).map((filterType, index) => (
+          <motion.button
             key={filterType}
             onClick={() => setFilter(filterType)}
             className={`px-6 py-2 rounded-lg font-semibold transition ${
@@ -99,35 +96,74 @@ export default function ClientReservationsPage() {
                 ? 'bg-primary-600 text-white'
                 : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
             }`}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3, delay: index * 0.1 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
             {filterType === 'all' && 'Toutes'}
             {filterType === 'pending' && 'En attente'}
             {filterType === 'confirmed' && 'Confirmées'}
             {filterType === 'completed' && 'Complétées'}
-          </button>
+          </motion.button>
         ))}
-      </div>
+      </motion.div>
 
       {/* Reservations List */}
-      <div className="grid grid-cols-1 gap-6">
-        {filteredReservations.map((reservation) => (
-          <div
+      <motion.div
+        className="gap-6 grid grid-cols-1"
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: { opacity: 0 },
+          visible: {
+            opacity: 1,
+            transition: {
+              staggerChildren: 0.1,
+            },
+          },
+        }}
+      >
+        {filteredReservations.map((reservation, index) => (
+          <motion.div
             key={reservation.id}
-            className="bg-white rounded-xl shadow-md p-6 border-l-4 border-primary-500 hover:shadow-lg transition"
+            className="bg-white shadow-md hover:shadow-lg p-6 border-primary-500 border-l-4 rounded-xl transition"
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0 },
+            }}
+            transition={{ duration: 0.5 }}
+            whileHover={{ y: -4, shadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}
           >
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="gap-6 grid grid-cols-1 md:grid-cols-4">
               {/* Property Info */}
               <div className="md:col-span-2">
-                <h3 className="text-lg font-bold text-slate-900 mb-2">
+                <motion.h3
+                  className="mb-2 font-bold text-slate-900 text-lg"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
                   {reservation.property?.title || 'Propriété'}
-                </h3>
-                <div className="flex items-center gap-2 text-slate-600 mb-3">
+                </motion.h3>
+                <motion.div
+                  className="flex items-center gap-2 mb-3 text-slate-600"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
                   <FaMapMarkerAlt className="text-primary-500" />
                   {reservation.property?.location || 'Non spécifiée'}
-                </div>
+                </motion.div>
 
                 {/* Dates */}
-                <div className="space-y-2 text-sm">
+                <motion.div
+                  className="space-y-2 text-sm"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                >
                   <div className="flex items-center gap-2 text-slate-600">
                     <FaCalendarAlt className="text-primary-500" />
                     <span>
@@ -143,48 +179,94 @@ export default function ClientReservationsPage() {
                     )}{' '}
                     nuits · {reservation.guests} voyageur(s)
                   </p>
-                </div>
+                </motion.div>
               </div>
 
               {/* Pricing */}
-              <div className="bg-slate-50 rounded-lg p-4">
-                <p className="text-sm text-slate-600 mb-2">Total</p>
-                <p className="text-2xl font-bold text-slate-900 mb-2">
-                  ${reservation.totalPrice.toFixed(2)}
+              <motion.div
+                className="bg-slate-50 p-4 rounded-lg"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.5 }}
+              >
+                <p className="mb-2 text-slate-600 text-sm">Total</p>
+                <p className="mb-2 font-bold text-slate-900 text-2xl">
+                  {PRICE_SYMBOL}
+                  {reservation.totalPrice.toFixed(2)}
                 </p>
-                <p className="text-xs text-slate-600">
-                  Dépôt: ${reservation.depositAmount.toFixed(2)}
+                <p className="text-slate-600 text-xs">
+                  Dépôt: {PRICE_SYMBOL}
+                  {reservation.depositAmount.toFixed(2)}
                 </p>
-              </div>
+              </motion.div>
 
               {/* Status */}
-              <div>
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.6 }}
+              >
                 <div className="mb-4">{getStatusBadge(reservation.status)}</div>
-                <Link
-                  href={`/properties/${reservation.propertyId}`}
-                  className="block w-full px-4 py-2 bg-primary-50 text-primary-600 rounded-lg hover:bg-primary-100 transition font-semibold text-center text-sm"
-                >
-                  Voir l'annonce
-                </Link>
-              </div>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Link
+                    href={`/properties/${reservation.propertyId}`}
+                    className="block bg-primary-50 hover:bg-primary-100 px-4 py-2 rounded-lg w-full font-semibold text-primary-600 text-sm text-center transition"
+                  >
+                    Voir l'annonce
+                  </Link>
+                </motion.div>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       {filteredReservations.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-xl">
-          <FaCalendarAlt className="text-6xl text-slate-300 mx-auto mb-4" />
-          <p className="text-xl text-slate-600 font-semibold">Aucune réservation</p>
-          <p className="text-slate-500 mb-6">Vous n'avez pas encore de réservations</p>
-          <Link
-            href="/properties"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-fluid text-white rounded-lg hover:shadow-lg transition"
+        <motion.div
+          className="bg-white py-12 rounded-xl text-center"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
           >
-            Découvrir les propriétés
-          </Link>
-        </div>
+            <FaCalendarAlt className="mx-auto mb-4 text-slate-300 text-6xl" />
+          </motion.div>
+          <motion.p
+            className="font-semibold text-slate-600 text-xl"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            Aucune réservation
+          </motion.p>
+          <motion.p
+            className="mb-6 text-slate-500"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            Vous n'avez pas encore de réservations
+          </motion.p>
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <Link
+              href="/properties"
+              className="inline-flex items-center gap-2 bg-gradient-fluid hover:shadow-lg px-6 py-3 rounded-lg text-white transition"
+            >
+              Découvrir les propriétés
+            </Link>
+          </motion.div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }

@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import {
   FaCalendarAlt,
@@ -14,41 +13,42 @@ import {
 import Link from 'next/link';
 import { useAuthStore, useReservationStore } from '@/store';
 import type { Reservation } from '@/types';
-
+import { PRICE_SYMBOL } from '@/lib/static';
 export default function OwnerReservationsPage() {
   const { user } = useAuthStore();
-  const { reservations, loadReservations, confirmReservation } = useReservationStore();
-  const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'completed'>('pending');
+  const {
+    reservations,
+    confirmReservation,
+    updateReservation,
+    subscribeToReservations,
+    unsubscribeFromReservations,
+  } = useReservationStore();
+  const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'rejected' | 'completed'>(
+    'pending'
+  );
   const [loading, setLoading] = useState(false);
-  const [ownerReservations, setOwnerReservations] = useState<Reservation[]>([]);
+
+  // Filter reservations for properties owned by this user
+  const ownerReservations = reservations.filter((r) => r.property?.ownerId === user?.id);
 
   useEffect(() => {
-    // Charger les réservations au montage
-    loadReservations();
-  }, [loadReservations]);
-
-  useEffect(() => {
-    // Filtrer les réservations pour les propriétés du propriétaire
     if (user?.id) {
-      const filtered = reservations.filter((r) => {
-        // Check if this reservation is for a property owned by the user
-        return r.property?.ownerId === user.id;
-      });
-      setOwnerReservations(filtered);
+      // Subscribe to all reservations (we'll filter client-side by property owner)
+      subscribeToReservations();
     }
-  }, [reservations, user?.id]);
 
+    return () => {
+      unsubscribeFromReservations();
+    };
+  }, [user?.id, subscribeToReservations, unsubscribeFromReservations]);
   const filteredReservations = ownerReservations.filter((r) => {
     if (filter === 'all') return true;
     return r.status === filter;
   });
-
   const handleConfirm = async (id: string) => {
     setLoading(true);
     try {
       await confirmReservation(id);
-      // Recharger les réservations
-      await loadReservations();
     } catch (error) {
       console.error('Error confirming reservation:', error);
       alert('Erreur lors de la confirmation');
@@ -56,54 +56,40 @@ export default function OwnerReservationsPage() {
       setLoading(false);
     }
   };
-
   const handleReject = async (id: string) => {
     setLoading(true);
     try {
-      // Update status to cancelled via API
-      const response = await fetch(`/api/reservations/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'cancelled' }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to reject reservation');
-      }
-
-      // Recharger les réservations
-      await loadReservations();
+      await updateReservation(id, { status: 'rejected' });
     } catch (error) {
       console.error('Error rejecting reservation:', error);
-      alert('Erreur lors du rejet');
+      alert(`Erreur lors du rejet: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
   };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'confirmed':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+          <span className="inline-flex items-center gap-1 bg-green-100 px-3 py-1 rounded-full font-semibold text-green-700 text-sm">
             <FaCheck /> Confirmée
           </span>
         );
       case 'pending':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-semibold">
+          <span className="inline-flex items-center gap-1 bg-yellow-100 px-3 py-1 rounded-full font-semibold text-yellow-700 text-sm">
             <FaHourglass /> En attente
           </span>
         );
-      case 'cancelled':
+      case 'rejected':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-semibold">
-            <FaTimes /> Annulée
+          <span className="inline-flex items-center gap-1 bg-red-100 px-3 py-1 rounded-full font-semibold text-red-700 text-sm">
+            <FaTimes /> Rejetée
           </span>
         );
       case 'completed':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+          <span className="inline-flex items-center gap-1 bg-blue-100 px-3 py-1 rounded-full font-semibold text-blue-700 text-sm">
             <FaCheck /> Complétée
           </span>
         );
@@ -111,55 +97,49 @@ export default function OwnerReservationsPage() {
         return null;
     }
   };
-
   if (!user) {
     return (
-      <div className="text-center py-12">
-        <p className="text-lg text-slate-600">
-          Veuillez vous connecter pour voir vos réservations
-        </p>
+      <div className="py-12 text-center">
+        <p className="text-slate-600 text-lg">Veuillez vous connecter pour voir vos réservations</p>
       </div>
     );
   }
-
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-900">Gestion des Réservations</h2>
+        <h2 className="font-bold text-slate-900 text-2xl">Gestion des Réservations</h2>
       </div>
-
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-yellow-500">
-          <p className="text-sm text-slate-600 font-semibold">En attente</p>
-          <p className="text-3xl font-bold text-yellow-600">
+      <div className="gap-4 grid grid-cols-1 md:grid-cols-4">
+        <div className="bg-white shadow-md p-4 border-yellow-500 border-l-4 rounded-xl">
+          <p className="font-semibold text-slate-600 text-sm">En attente</p>
+          <p className="font-bold text-yellow-600 text-3xl">
             {reservations.filter((r) => r.status === 'pending').length}
           </p>
         </div>
-        <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-green-500">
-          <p className="text-sm text-slate-600 font-semibold">Confirmées</p>
-          <p className="text-3xl font-bold text-green-600">
+        <div className="bg-white shadow-md p-4 border-green-500 border-l-4 rounded-xl">
+          <p className="font-semibold text-slate-600 text-sm">Confirmées</p>
+          <p className="font-bold text-green-600 text-3xl">
             {reservations.filter((r) => r.status === 'confirmed').length}
           </p>
         </div>
-        <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-blue-500">
-          <p className="text-sm text-slate-600 font-semibold">Complétées</p>
-          <p className="text-3xl font-bold text-blue-600">
+        <div className="bg-white shadow-md p-4 border-red-500 border-l-4 rounded-xl">
+          <p className="font-semibold text-slate-600 text-sm">Rejetées</p>
+          <p className="font-bold text-red-600 text-3xl">
+            {reservations.filter((r) => r.status === 'rejected').length}
+          </p>
+        </div>
+        <div className="bg-white shadow-md p-4 border-blue-500 border-l-4 rounded-xl">
+          <p className="font-semibold text-slate-600 text-sm">Complétées</p>
+          <p className="font-bold text-blue-600 text-3xl">
             {reservations.filter((r) => r.status === 'completed').length}
           </p>
         </div>
-        <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-red-500">
-          <p className="text-sm text-slate-600 font-semibold">Annulées</p>
-          <p className="text-3xl font-bold text-red-600">
-            {reservations.filter((r) => r.status === 'cancelled').length}
-          </p>
-        </div>
       </div>
-
       {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
-        {(['pending', 'confirmed', 'completed', 'all'] as const).map((filterType) => (
+      <div className="flex flex-wrap gap-3">
+        {(['pending', 'confirmed', 'rejected', 'completed', 'all'] as const).map((filterType) => (
           <button
             key={filterType}
             onClick={() => setFilter(filterType)}
@@ -172,30 +152,29 @@ export default function OwnerReservationsPage() {
             {filterType === 'all' && 'Toutes'}
             {filterType === 'pending' && 'En attente'}
             {filterType === 'confirmed' && 'Confirmées'}
+            {filterType === 'rejected' && 'Rejetées'}
             {filterType === 'completed' && 'Complétées'}
           </button>
         ))}
       </div>
-
       {/* Reservations List */}
       <div className="space-y-4">
         {filteredReservations.map((reservation) => (
           <div
             key={reservation.id}
-            className="bg-white rounded-xl shadow-md overflow-hidden border-l-4 border-primary-500 hover:shadow-lg transition"
+            className="bg-white shadow-md hover:shadow-lg border-primary-500 border-l-4 rounded-xl overflow-hidden transition"
           >
             <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+              <div className="gap-6 grid grid-cols-1 md:grid-cols-5">
                 {/* Property & Dates */}
                 <div className="md:col-span-2">
-                  <h3 className="text-lg font-bold text-slate-900 mb-2">
+                  <h3 className="mb-2 font-bold text-slate-900 text-lg">
                     {reservation.property?.title || 'Propriété'}
                   </h3>
-                  <div className="flex items-center gap-2 text-slate-600 mb-3">
+                  <div className="flex items-center gap-2 mb-3 text-slate-600">
                     <FaMapMarkerAlt className="text-primary-500" />
                     {reservation.property?.location || 'Non spécifiée'}
                   </div>
-
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2 text-slate-600">
                       <FaCalendarAlt className="text-primary-500" />
@@ -214,10 +193,9 @@ export default function OwnerReservationsPage() {
                     </p>
                   </div>
                 </div>
-
                 {/* Client Info */}
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-600 mb-2">Client</h4>
+                  <h4 className="mb-2 font-semibold text-slate-600 text-sm">Client</h4>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-slate-700">
                       <FaUser className="text-primary-500" />
@@ -237,35 +215,34 @@ export default function OwnerReservationsPage() {
                     )}
                   </div>
                 </div>
-
                 {/* Pricing */}
-                <div className="bg-slate-50 rounded-lg p-4">
-                  <p className="text-sm text-slate-600 mb-2">Total</p>
-                  <p className="text-2xl font-bold text-slate-900 mb-2">
-                    ${reservation.totalPrice.toFixed(2)}
+                <div className="bg-slate-50 p-4 rounded-lg">
+                  <p className="mb-2 text-slate-600 text-sm">Total</p>
+                  <p className="mb-2 font-bold text-slate-900 text-2xl">
+                    {PRICE_SYMBOL}
+                    {reservation.totalPrice.toFixed(2)}
                   </p>
-                  <p className="text-xs text-slate-600">
-                    Dépôt: ${reservation.depositAmount.toFixed(2)}
+                  <p className="text-slate-600 text-xs">
+                    Dépôt: {PRICE_SYMBOL}
+                    {reservation.depositAmount.toFixed(2)}
                   </p>
                 </div>
-
                 {/* Status & Actions */}
                 <div className="flex flex-col justify-between">
                   <div className="mb-4">{getStatusBadge(reservation.status)}</div>
-
                   {reservation.status === 'pending' && (
                     <div className="flex flex-col gap-2">
                       <button
                         onClick={() => handleConfirm(reservation.id)}
                         disabled={loading}
-                        className="flex items-center justify-center gap-2 px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex justify-center items-center gap-2 bg-green-500 hover:bg-green-600 disabled:opacity-50 px-3 py-2 rounded-lg font-semibold text-white text-sm transition disabled:cursor-not-allowed"
                       >
                         <FaCheck /> {loading ? 'Traitement...' : 'Confirmer'}
                       </button>
                       <button
                         onClick={() => handleReject(reservation.id)}
                         disabled={loading}
-                        className="flex items-center justify-center gap-2 px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex justify-center items-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 px-3 py-2 rounded-lg font-semibold text-white text-sm transition disabled:cursor-not-allowed"
                       >
                         <FaTimes /> {loading ? 'Traitement...' : 'Refuser'}
                       </button>
@@ -277,14 +254,13 @@ export default function OwnerReservationsPage() {
           </div>
         ))}
       </div>
-
       {filteredReservations.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-xl">
-          <FaCalendarAlt className="text-6xl text-slate-300 mx-auto mb-4" />
-          <p className="text-xl text-slate-600 font-semibold">Aucune réservation</p>
+        <div className="bg-white py-12 rounded-xl text-center">
+          <FaCalendarAlt className="mx-auto mb-4 text-slate-300 text-6xl" />
+          <p className="font-semibold text-slate-600 text-xl">Aucune réservation</p>
           <p className="text-slate-500">
             {filter === 'pending'
-              ? 'Vous n\'avez pas de réservation en attente'
+              ? "Vous n'avez pas de réservation en attente"
               : 'Aucune réservation avec ce statut'}
           </p>
         </div>

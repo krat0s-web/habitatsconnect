@@ -25,7 +25,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-primary-500 rounded-full hover:bg-primary-600;
+  @apply bg-secondary-700 hover:bg-secondary-500;
 }
 
 /* Animations */
@@ -40,11 +40,6 @@ body {
 
 .animate-shimmer {
   animation: shimmer 2s infinite;
-  background: linear-gradient(
-    to right,
-    #f1f5f9 0%,
-    #e2e8f0 50%,
-    #f1f5f9 100%
-  );
+  background: linear-gradient(to right, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
   background-size: 1000px 100%;
 }

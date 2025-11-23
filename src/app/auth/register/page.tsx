@@ -1,17 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  FaUser,
-  FaEnvelope,
-  FaLock,
-  FaPhone,
-  FaArrowRight,
-  FaHome,
-} from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaLock, FaPhone, FaArrowRight, FaHome } from 'react-icons/fa';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card } from '@/components/ui/card';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -27,9 +24,7 @@ export default function RegisterPage() {
   const { register, isLoading } = useAuthStore();
   const router = useRouter();
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -40,9 +35,9 @@ export default function RegisterPage() {
       alert('Les mots de passe ne correspondent pas');
       return;
     }
-    
+
     await register(formData);
-    
+
     // Redirection selon le rôle
     setTimeout(() => {
       if (formData.role === 'owner') {
@@ -54,51 +49,49 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-secondary-50 to-primary-50 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8">
+    <div className="flex justify-center items-center bg-gradient-to-br from-secondary-50 to-primary-50 px-4 sm:px-6 lg:px-8 py-8 min-h-screen">
       <div className="w-full max-w-2xl">
-        <div className="bg-white rounded-2xl shadow-xl p-8 sm:p-10">
+        <Card className="p-8 sm:p-10">
           {/* Header */}
-          <div className="text-center mb-8">
-            <div className="inline-block p-4 bg-gradient-fluid rounded-full mb-4">
-              <FaHome className="text-2xl text-white" />
+          <div className="mb-8 text-center">
+            <div className="inline-block bg-gradient-fluid mb-4 p-4 rounded-full">
+              <FaHome className="text-white text-2xl" />
             </div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">
-              Créer votre compte
-            </h1>
-            <p className="text-slate-600">
-              Rejoignez HabitatsConnect et commencez l&apos;aventure
-            </p>
+            <h1 className="mb-2 font-bold text-slate-900 text-3xl">Créer votre compte</h1>
+            <p className="text-slate-600">Rejoignez HabitatsConnect et commencez l&apos;aventure</p>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4 mb-6">
             {/* Name Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="gap-4 grid grid-cols-1 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <Label htmlFor="firstName" className="flex items-center mb-2 text-slate-700">
                   <FaUser className="inline mr-2" /> Prénom
-                </label>
-                <input
+                </Label>
+                <Input
+                  id="firstName"
                   type="text"
                   name="firstName"
                   value={formData.firstName}
                   onChange={handleChange}
                   placeholder="Jean"
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                  className="h-11"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <Label htmlFor="lastName" className="mb-2 text-slate-700">
                   Nom
-                </label>
-                <input
+                </Label>
+                <Input
+                  id="lastName"
                   type="text"
                   name="lastName"
                   value={formData.lastName}
                   onChange={handleChange}
                   placeholder="Dupont"
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                  className="h-11"
                   required
                 />
               </div>
@@ -106,62 +99,66 @@ export default function RegisterPage() {
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <Label htmlFor="email" className="flex items-center mb-2 text-slate-700">
                 <FaEnvelope className="inline mr-2" /> Email
-              </label>
-              <input
+              </Label>
+              <Input
+                id="email"
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="votre@email.com"
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                className="h-11"
                 required
               />
             </div>
 
             {/* Phone */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <Label htmlFor="phone" className="flex items-center mb-2 text-slate-700">
                 <FaPhone className="inline mr-2" /> Téléphone
-              </label>
-              <input
+              </Label>
+              <Input
+                id="phone"
                 type="tel"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="+33 6 12 34 56 78"
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                className="h-11"
               />
             </div>
 
             {/* Password Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="gap-4 grid grid-cols-1 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <Label htmlFor="password" className="flex items-center mb-2 text-slate-700">
                   <FaLock className="inline mr-2" /> Mot de passe
-                </label>
-                <input
+                </Label>
+                <Input
+                  id="password"
                   type="password"
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="••••••••"
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                  className="h-11"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <Label htmlFor="confirmPassword" className="mb-2 text-slate-700">
                   Confirmer mot de passe
-                </label>
-                <input
+                </Label>
+                <Input
+                  id="confirmPassword"
                   type="password"
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   placeholder="••••••••"
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                  className="h-11"
                   required
                 />
               </div>
@@ -169,32 +166,32 @@ export default function RegisterPage() {
 
             {/* Role Selection */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Je suis...
-              </label>
-              <div className="grid grid-cols-2 gap-4">
-                <button
+              <label className="block mb-2 font-semibold text-slate-700 text-sm">Je suis...</label>
+              <div className="gap-4 grid grid-cols-2">
+                <Button
                   type="button"
+                  variant={formData.role === 'client' ? 'default' : 'outline'}
                   onClick={() => setFormData({ ...formData, role: 'client' })}
-                  className={`py-3 px-4 rounded-lg font-semibold transition ${
+                  className={
                     formData.role === 'client'
-                      ? 'bg-primary-100 text-primary-700 border-2 border-primary-500'
-                      : 'bg-slate-100 text-slate-700 border-2 border-transparent hover:bg-slate-200'
-                  }`}
+                      ? 'bg-primary-100 text-primary-700 border-2 border-primary-500 h-11'
+                      : 'h-11'
+                  }
                 >
                   Client
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant={formData.role === 'owner' ? 'default' : 'outline'}
                   onClick={() => setFormData({ ...formData, role: 'owner' })}
-                  className={`py-3 px-4 rounded-lg font-semibold transition ${
+                  className={
                     formData.role === 'owner'
-                      ? 'bg-secondary-100 text-secondary-700 border-2 border-secondary-500'
-                      : 'bg-slate-100 text-slate-700 border-2 border-transparent hover:bg-slate-200'
-                  }`}
+                      ? 'bg-secondary-100 text-secondary-700 border-2 border-secondary-500 h-11'
+                      : 'h-11'
+                  }
                 >
                   Propriétaire
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -204,20 +201,20 @@ export default function RegisterPage() {
                 type="checkbox"
                 checked={agreeTerms}
                 onChange={(e) => setAgreeTerms(e.target.checked)}
-                className="w-4 h-4 mt-1 rounded"
+                className="mt-1 rounded w-4 h-4"
               />
               <span className="text-sm">
                 J&apos;accepte les{' '}
                 <Link
                   href="/terms"
-                  className="text-primary-600 hover:text-primary-700 font-semibold"
+                  className="font-semibold text-primary-600 hover:text-primary-700"
                 >
                   conditions d&apos;utilisation
                 </Link>{' '}
                 et la{' '}
                 <Link
                   href="/privacy"
-                  className="text-primary-600 hover:text-primary-700 font-semibold"
+                  className="font-semibold text-primary-600 hover:text-primary-700"
                 >
                   politique de confidentialité
                 </Link>
@@ -225,27 +222,27 @@ export default function RegisterPage() {
             </label>
 
             {/* Submit Button */}
-            <button
+            <Button
               type="submit"
+              variant="gradient"
               disabled={!agreeTerms || isLoading}
-              className="w-full py-3 bg-gradient-fluid text-white font-bold rounded-lg hover:shadow-lg transition flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full h-11"
             >
-              {isLoading ? 'Inscription...' : 'Créer mon compte'}{' '}
-              <FaArrowRight />
-            </button>
+              {isLoading ? 'Inscription...' : 'Créer mon compte'} <FaArrowRight className="ml-2" />
+            </Button>
           </form>
 
           {/* Footer */}
-          <p className="text-center text-slate-600">
+          <p className="text-slate-600 text-center">
             Vous avez déjà un compte?{' '}
             <Link
               href="/auth/login"
-              className="text-primary-600 hover:text-primary-700 font-semibold"
+              className="font-semibold text-primary-600 hover:text-primary-700"
             >
               Se connecter
             </Link>
           </p>
-        </div>
+        </Card>
       </div>
     </div>
   );

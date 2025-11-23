@@ -11,31 +11,29 @@ import {
   FaDollarSign,
 } from 'react-icons/fa';
 import Link from 'next/link';
-import { useAuthStore } from '@/store';
+import { useAuthStore, useReservationStore } from '@/store';
 import type { Reservation } from '@/types';
+import { PRICE_SYMBOL } from '@/lib/static';
 
 export default function DepositsPage() {
   const { user } = useAuthStore();
-  const [deposits, setDeposits] = useState<Reservation[]>([]);
+  const { reservations, loading, subscribeToReservations, unsubscribeFromReservations } =
+    useReservationStore();
   const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'refunded'>('all');
 
+  // Filter reservations to get deposits
+  const deposits = reservations.filter((r) => r.clientId === user?.id && r.depositAmount > 0);
+
   useEffect(() => {
-    // Charger les dépôts du client
-    if (typeof window !== 'undefined' && user) {
-      const stored = localStorage.getItem('habitatsconnect_reservations');
-      if (stored) {
-        try {
-          const allReservations = JSON.parse(stored);
-          const clientDeposits = allReservations.filter(
-            (r: any) => r.clientId === user.id && r.depositAmount > 0
-          );
-          setDeposits(clientDeposits);
-        } catch (error) {
-          console.error('Erreur lors du chargement des dépôts:', error);
-        }
-      }
+    if (user?.id) {
+      // Subscribe to real-time reservations for this client
+      subscribeToReservations(user.id);
     }
-  }, [user]);
+
+    return () => {
+      unsubscribeFromReservations();
+    };
+  }, [user?.id, subscribeToReservations, unsubscribeFromReservations]);
 
   const filteredDeposits = deposits.filter((d) => {
     if (filter === 'all') return true;
@@ -54,25 +52,25 @@ export default function DepositsPage() {
     switch (status) {
       case 'pending':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-semibold">
+          <span className="inline-flex items-center gap-1 bg-yellow-100 px-3 py-1 rounded-full font-semibold text-yellow-700 text-sm">
             <FaHourglass /> En attente
           </span>
         );
       case 'confirmed':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+          <span className="inline-flex items-center gap-1 bg-blue-100 px-3 py-1 rounded-full font-semibold text-blue-700 text-sm">
             <FaLock /> Bloqué
           </span>
         );
       case 'completed':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+          <span className="inline-flex items-center gap-1 bg-green-100 px-3 py-1 rounded-full font-semibold text-green-700 text-sm">
             <FaCheckCircle /> Remboursé
           </span>
         );
       case 'cancelled':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-semibold">
+          <span className="inline-flex items-center gap-1 bg-red-100 px-3 py-1 rounded-full font-semibold text-red-700 text-sm">
             <FaTimesCircle /> Annulé
           </span>
         );
@@ -83,10 +81,8 @@ export default function DepositsPage() {
 
   if (!user) {
     return (
-      <div className="text-center py-12">
-        <p className="text-lg text-slate-600">
-          Veuillez vous connecter pour voir vos dépôts
-        </p>
+      <div className="py-12 text-center">
+        <p className="text-slate-600 text-lg">Veuillez vous connecter pour voir vos dépôts</p>
       </div>
     );
   }
@@ -95,54 +91,56 @@ export default function DepositsPage() {
     <div className="space-y-8">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-900">Dépôts de Garantie</h2>
+        <h2 className="font-bold text-slate-900 text-2xl">Dépôts de Garantie</h2>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-primary-500">
-          <div className="flex items-center justify-between">
+      <div className="gap-6 grid grid-cols-1 md:grid-cols-3">
+        <div className="bg-white shadow-md p-6 border-primary-500 border-l-4 rounded-xl">
+          <div className="flex justify-between items-center">
             <div>
-              <p className="text-sm text-slate-600 font-semibold">Total Dépôts</p>
-              <p className="text-3xl font-bold text-primary-600 mt-2">
-                ${totalDeposits.toFixed(2)}
+              <p className="font-semibold text-slate-600 text-sm">Total Dépôts</p>
+              <p className="mt-2 font-bold text-primary-600 text-3xl">
+                {PRICE_SYMBOL}
+                {totalDeposits.toFixed(2)}
               </p>
             </div>
-            <FaDollarSign className="text-5xl text-primary-200" />
+            <FaDollarSign className="text-primary-200 text-5xl" />
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-yellow-500">
-          <div className="flex items-center justify-between">
+        <div className="bg-white shadow-md p-6 border-yellow-500 border-l-4 rounded-xl">
+          <div className="flex justify-between items-center">
             <div>
-              <p className="text-sm text-slate-600 font-semibold">Dépôts Bloqués</p>
-              <p className="text-3xl font-bold text-yellow-600 mt-2">
-                ${lockedDeposits.toFixed(2)}
+              <p className="font-semibold text-slate-600 text-sm">Dépôts Bloqués</p>
+              <p className="mt-2 font-bold text-yellow-600 text-3xl">
+                {PRICE_SYMBOL}
+                {lockedDeposits.toFixed(2)}
               </p>
             </div>
-            <FaLock className="text-5xl text-yellow-200" />
+            <FaLock className="text-yellow-200 text-5xl" />
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-green-500">
-          <div className="flex items-center justify-between">
+        <div className="bg-white shadow-md p-6 border-green-500 border-l-4 rounded-xl">
+          <div className="flex justify-between items-center">
             <div>
-              <p className="text-sm text-slate-600 font-semibold">Remboursés</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">
-                ${(
-                  deposits
-                    .filter((d) => d.status === 'completed')
-                    .reduce((sum, d) => sum + d.depositAmount, 0)
-                ).toFixed(2)}
+              <p className="font-semibold text-slate-600 text-sm">Remboursés</p>
+              <p className="mt-2 font-bold text-green-600 text-3xl">
+                {PRICE_SYMBOL}
+                {deposits
+                  .filter((d) => d.status === 'completed')
+                  .reduce((sum, d) => sum + d.depositAmount, 0)
+                  .toFixed(2)}
               </p>
             </div>
-            <FaCheckCircle className="text-5xl text-green-200" />
+            <FaCheckCircle className="text-green-200 text-5xl" />
           </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
+      <div className="flex flex-wrap gap-3">
         {(['all', 'pending', 'confirmed', 'refunded'] as const).map((filterType) => (
           <button
             key={filterType}
@@ -162,26 +160,16 @@ export default function DepositsPage() {
       </div>
 
       {/* Deposits Table */}
-      <div className="bg-white rounded-xl shadow-md overflow-hidden">
+      <div className="bg-white shadow-md rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="bg-slate-50 border-slate-200 border-b">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">
-                  Propriété
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">
-                  Dates
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">
-                  Montant
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">
-                  Statut
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-bold text-slate-700">
-                  Action
-                </th>
+                <th className="px-6 py-4 font-bold text-slate-700 text-sm text-left">Propriété</th>
+                <th className="px-6 py-4 font-bold text-slate-700 text-sm text-left">Dates</th>
+                <th className="px-6 py-4 font-bold text-slate-700 text-sm text-left">Montant</th>
+                <th className="px-6 py-4 font-bold text-slate-700 text-sm text-left">Statut</th>
+                <th className="px-6 py-4 font-bold text-slate-700 text-sm text-left">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -192,7 +180,7 @@ export default function DepositsPage() {
                       <p className="font-semibold text-slate-900">
                         {deposit.property?.title || 'Propriété'}
                       </p>
-                      <div className="flex items-center gap-1 text-sm text-slate-600">
+                      <div className="flex items-center gap-1 text-slate-600 text-sm">
                         <FaMapMarkerAlt className="text-primary-500" />
                         {deposit.property?.location}
                       </div>
@@ -207,16 +195,15 @@ export default function DepositsPage() {
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm font-bold text-primary-600">
-                    ${deposit.depositAmount.toFixed(2)}
+                  <td className="px-6 py-4 font-bold text-primary-600 text-sm">
+                    {PRICE_SYMBOL}
+                    {deposit.depositAmount.toFixed(2)}
                   </td>
-                  <td className="px-6 py-4">
-                    {getStatusBadge(deposit.status)}
-                  </td>
+                  <td className="px-6 py-4">{getStatusBadge(deposit.status)}</td>
                   <td className="px-6 py-4">
                     <Link
                       href={`/dashboard/client/reservations`}
-                      className="text-primary-600 hover:text-primary-700 font-semibold text-sm"
+                      className="font-semibold text-primary-600 hover:text-primary-700 text-sm"
                     >
                       Détails
                     </Link>
@@ -229,10 +216,10 @@ export default function DepositsPage() {
       </div>
 
       {filteredDeposits.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-xl">
-          <FaLock className="text-6xl text-slate-300 mx-auto mb-4" />
-          <p className="text-xl text-slate-600 font-semibold">Aucun dépôt</p>
-          <p className="text-slate-500 mb-6">Vous n'avez pas encore de dépôt de garantie</p>
+        <div className="bg-white py-12 rounded-xl text-center">
+          <FaLock className="mx-auto mb-4 text-slate-300 text-6xl" />
+          <p className="font-semibold text-slate-600 text-xl">Aucun dépôt</p>
+          <p className="mb-6 text-slate-500">Vous n'avez pas encore de dépôt de garantie</p>
         </div>
       )}
     </div>

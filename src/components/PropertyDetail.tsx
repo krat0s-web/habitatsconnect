@@ -1,6 +1,5 @@
 'use client';
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FaChevronLeft,
   FaChevronRight,
@@ -18,10 +17,13 @@ import {
   FaUser,
   FaStar,
   FaComment,
+  FaPlay,
+  FaPause,
 } from 'react-icons/fa';
+import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import Calendar from './Calendar';
 import type { Property, Reservation } from '@/types';
-
+import { PRICE_SYMBOL } from '@/lib/static';
 interface PropertyDetailProps {
   property: Property;
   onReserve?: (reservation: Partial<Reservation>) => void;
@@ -30,7 +32,6 @@ interface PropertyDetailProps {
   currentUserId?: string;
   reservations?: Reservation[];
 }
-
 export const PropertyDetail: React.FC<PropertyDetailProps> = ({
   property,
   onReserve,
@@ -40,38 +41,66 @@ export const PropertyDetail: React.FC<PropertyDetailProps> = ({
   reservations = [],
 }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isImageLoading, setIsImageLoading] = useState(true);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(false);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [checkInDate, setCheckInDate] = useState('');
   const [checkOutDate, setCheckOutDate] = useState('');
   const [guests, setGuests] = useState(1);
+  // Auto-play functionality
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isAutoPlaying && property.images.length > 1) {
+      interval = setInterval(() => {
+        setCurrentImageIndex((prev) => (prev + 1) % property.images.length);
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [isAutoPlaying, property.images.length]);
 
+  // Touch handlers for mobile swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe && currentImageIndex < property.images.length - 1) {
+      nextImage();
+    }
+    if (isRightSwipe && currentImageIndex > 0) {
+      prevImage();
+    }
+  };
   const nextImage = () => {
-    setCurrentImageIndex(
-      (prev) => (prev + 1) % property.images.length
-    );
+    setCurrentImageIndex((prev) => (prev + 1) % property.images.length);
   };
-
   const prevImage = () => {
-    setCurrentImageIndex(
-      (prev) => (prev - 1 + property.images.length) % property.images.length
-    );
+    setCurrentImageIndex((prev) => (prev - 1 + property.images.length) % property.images.length);
   };
-
   const amenityIcons: Record<string, React.ReactNode> = {
     wifi: <FaWifi />,
     parking: <FaParking />,
     kitchen: <FaUtensils />,
     pool: <FaSwimmingPool />,
   };
-
   const handleReserve = () => {
     if (checkInDate && checkOutDate && onReserve) {
       const nights = Math.ceil(
-        (new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) /
-          (1000 * 60 * 60 * 24)
+        (new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60 * 24)
       );
       const totalPrice = property.price * nights * guests;
       const depositAmount = totalPrice * 0.3; // 30% de dépôt de garantie
-
       onReserve({
         checkIn: new Date(checkInDate),
         checkOut: new Date(checkOutDate),
@@ -81,84 +110,138 @@ export const PropertyDetail: React.FC<PropertyDetailProps> = ({
       });
     }
   };
-
   const handleDateRangeSelect = (checkIn: Date, checkOut: Date) => {
     setCheckInDate(checkIn.toISOString().split('T')[0]);
     setCheckOutDate(checkOut.toISOString().split('T')[0]);
   };
-
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
       {/* Gallery */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8 rounded-2xl overflow-hidden shadow-xl">
+      <div className="gap-4 grid grid-cols-1 lg:grid-cols-3 shadow-xl mb-8 rounded-3xl overflow-hidden">
         {/* Main Image */}
-        <div className="lg:col-span-2 relative h-96 lg:h-full group">
-          <img
-            src={property.images[currentImageIndex]?.url || '/placeholder.jpg'}
-            alt={property.title}
-            className="w-full h-full object-cover"
-          />
+        <div className="group relative lg:col-span-2 h-96 lg:h-full">
+          <AnimatePresence mode="wait">
+            <motion.img
+              key={currentImageIndex}
+              src={property.images[currentImageIndex]?.url || '/placeholder.jpg'}
+              alt={property.title}
+              className="w-full h-full object-cover"
+              initial={{ opacity: 0, scale: 1.1 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.5, ease: 'easeInOut' }}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            />
+          </AnimatePresence>
 
           {/* Navigation Buttons */}
           {property.images.length > 1 && (
             <>
-              <button
+              <motion.button
                 onClick={prevImage}
-                className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-white/90 hover:bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                className="top-1/2 left-4 absolute bg-white/90 hover:bg-white opacity-0 group-hover:opacity-100 shadow-lg p-3 rounded-full transition-opacity -translate-y-1/2"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
               >
                 <FaChevronLeft />
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 onClick={nextImage}
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/90 hover:bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                className="top-1/2 right-4 absolute bg-white/90 hover:bg-white opacity-0 group-hover:opacity-100 shadow-lg p-3 rounded-full transition-opacity -translate-y-1/2"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
               >
                 <FaChevronRight />
-              </button>
+              </motion.button>
             </>
           )}
 
+          {/* Auto-play Controls */}
+          {property.images.length > 1 && (
+            <motion.button
+              onClick={() => setIsAutoPlaying(!isAutoPlaying)}
+              className="top-4 right-4 absolute bg-black/50 hover:bg-black/70 p-2 rounded-full text-white transition-colors"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              {isAutoPlaying ? <FaPause /> : <FaPlay />}
+            </motion.button>
+          )}
+
           {/* Image Counter */}
-          <div className="absolute bottom-4 right-4 px-3 py-1 bg-black/50 text-white rounded-full text-sm">
+          <motion.div
+            className="right-4 bottom-4 absolute bg-black/50 px-3 py-1 rounded-full text-white text-sm"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
             {currentImageIndex + 1} / {property.images.length}
-          </div>
+          </motion.div>
         </div>
 
         {/* Thumbnail Gallery */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 lg:flex lg:flex-col">
+        <div className="lg:flex lg:flex-col gap-2 grid grid-cols-2 lg:grid-cols-3">
           {property.images.slice(0, 6).map((img, idx) => (
-            <button
+            <motion.button
               key={idx}
               onClick={() => setCurrentImageIndex(idx)}
-              className={`relative h-20 rounded-lg overflow-hidden transition-all ${
-                idx === currentImageIndex
-                  ? 'ring-2 ring-primary-500'
-                  : 'hover:opacity-80'
+              className={`relative h-20 rounded-xl overflow-hidden transition-all ${
+                idx === currentImageIndex ? 'ring-2 ring-primary-500' : 'hover:opacity-80'
               }`}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.1 }}
             >
-              <img
+              <motion.img
                 src={img.url}
                 alt={`Gallery ${idx}`}
                 className="w-full h-full object-cover"
+                whileHover={{ scale: 1.1 }}
+                transition={{ duration: 0.2 }}
               />
-            </button>
+              {idx === currentImageIndex && (
+                <motion.div
+                  className="top-0 left-0 absolute bg-primary-500/20 w-full h-full"
+                  layoutId="activeThumbnail"
+                  transition={{ duration: 0.2 }}
+                />
+              )}
+            </motion.button>
           ))}
           {property.images.length > 6 && (
-            <button className="flex items-center justify-center h-20 rounded-lg bg-slate-200 hover:bg-slate-300 transition font-semibold">
+            <motion.button
+              className="flex justify-center items-center bg-slate-200 hover:bg-slate-300 rounded-xl h-20 font-semibold transition"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+            >
               <FaImages /> +{property.images.length - 6}
-            </button>
+            </motion.button>
           )}
         </div>
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="gap-8 grid grid-cols-1 lg:grid-cols-3">
         {/* Main Content */}
         <div className="lg:col-span-2">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-4xl font-bold text-slate-900 mb-3">
-              {property.title}
-            </h1>
-            <div className="flex items-center gap-4 flex-wrap">
+            <h1 className="mb-3 font-bold text-slate-900 text-4xl">{property.title}</h1>
+            <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2 text-slate-600">
                 <FaMapMarkerAlt className="text-primary-600" />
                 <span>{property.location}</span>
@@ -168,90 +251,75 @@ export const PropertyDetail: React.FC<PropertyDetailProps> = ({
                 <span className="font-semibold">4.8</span>
                 <span className="text-slate-600">(128 avis)</span>
               </div>
-              <span className="text-primary-600 font-semibold">
-                ${property.price} par nuit
+              <span className="font-semibold text-primary-600">
+                {PRICE_SYMBOL}
+                {property.price} par nuit
               </span>
             </div>
           </div>
-
           {/* Features */}
-          <div className="grid grid-cols-4 gap-4 mb-8 p-6 bg-slate-50 rounded-xl">
+          <div className="gap-4 grid grid-cols-4 bg-slate-50 mb-8 p-6 rounded-2xl">
             <div className="text-center">
-              <FaBed className="text-2xl text-primary-600 mx-auto mb-2" />
-              <span className="text-2xl font-bold">{property.bedrooms}</span>
-              <p className="text-sm text-slate-600">Chambres</p>
+              <FaBed className="mx-auto mb-2 text-primary-600 text-2xl" />
+              <span className="font-bold text-2xl">{property.bedrooms}</span>
+              <p className="text-slate-600 text-sm">Chambres</p>
             </div>
             <div className="text-center">
-              <FaBath className="text-2xl text-secondary-600 mx-auto mb-2" />
-              <span className="text-2xl font-bold">{property.bathrooms}</span>
-              <p className="text-sm text-slate-600">SDB</p>
+              <FaBath className="mx-auto mb-2 text-secondary-600 text-2xl" />
+              <span className="font-bold text-2xl">{property.bathrooms}</span>
+              <p className="text-slate-600 text-sm">SDB</p>
             </div>
             <div className="text-center">
-              <FaRuler className="text-2xl text-accent-500 mx-auto mb-2" />
-              <span className="text-2xl font-bold">{property.area}</span>
-              <p className="text-sm text-slate-600">m²</p>
+              <FaRuler className="mx-auto mb-2 text-2xl text-accent-500" />
+              <span className="font-bold text-2xl">{property.area}</span>
+              <p className="text-slate-600 text-sm">m²</p>
             </div>
             <div className="text-center">
-              <FaAirbnb className="text-2xl text-primary-600 mx-auto mb-2" />
-              <span className="text-sm font-bold capitalize">
-                {property.type}
-              </span>
-              <p className="text-sm text-slate-600">Type</p>
+              <FaAirbnb className="mx-auto mb-2 text-primary-600 text-2xl" />
+              <span className="font-bold text-sm capitalize">{property.type}</span>
+              <p className="text-slate-600 text-sm">Type</p>
             </div>
           </div>
-
           {/* Description */}
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-slate-900 mb-4">
-              À propos du lieu
-            </h2>
-            <p className="text-slate-700 leading-relaxed mb-6">
-              {property.description}
-            </p>
+            <h2 className="mb-4 font-bold text-slate-900 text-2xl">À propos du lieu</h2>
+            <p className="mb-6 text-slate-700 leading-relaxed">{property.description}</p>
           </div>
-
           {/* Amenities */}
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-slate-900 mb-4">
-              Équipements
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <h2 className="mb-4 font-bold text-slate-900 text-2xl">Équipements</h2>
+            <div className="gap-4 grid grid-cols-2 md:grid-cols-3">
               {property.amenities.map((amenity, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition"
+                  className="flex items-center gap-3 bg-slate-50 hover:bg-slate-100 p-3 rounded-xl transition"
                 >
-                  <span className="text-xl text-primary-600">
+                  <span className="text-primary-600 text-xl">
                     {amenityIcons[amenity.toLowerCase()] || '✓'}
                   </span>
-                  <span className="font-semibold text-slate-700">
-                    {amenity}
-                  </span>
+                  <span className="font-semibold text-slate-700">{amenity}</span>
                 </div>
               ))}
             </div>
           </div>
-
           {/* Owner Info */}
-          <div className="p-6 bg-gradient-to-r from-primary-50 to-secondary-50 rounded-xl mb-8 border border-primary-200">
-            <div className="flex items-center justify-between">
+          <div className="bg-gradient-to-r from-primary-50 to-secondary-50 mb-8 p-6 border border-primary-200 rounded-2xl">
+            <div className="flex justify-between items-center">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-gradient-fluid flex items-center justify-center text-white text-2xl">
+                <div className="flex justify-center items-center bg-gradient-fluid rounded-full w-16 h-16 text-white text-2xl">
                   <FaUser />
                 </div>
                 <div>
                   <h3 className="font-bold text-lg">
                     {property.owner?.firstName} {property.owner?.lastName}
                   </h3>
-                  <p className="text-sm text-slate-600">
-                    Propriétaire · Membre depuis 2 ans
-                  </p>
+                  <p className="text-slate-600 text-sm">Propriétaire · Membre depuis 2 ans</p>
                 </div>
               </div>
               <button
                 onClick={onContact}
                 disabled={isOwner}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold transition ${
                   isOwner
                     ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
                     : 'bg-primary-600 text-white hover:bg-primary-700'
@@ -262,36 +330,36 @@ export const PropertyDetail: React.FC<PropertyDetailProps> = ({
             </div>
           </div>
         </div>
-
         {/* Reservation Card */}
         <div className="lg:col-span-1">
-          <div className="sticky top-24 p-6 bg-white rounded-2xl shadow-lg border border-slate-200">
-            <div className="text-3xl font-bold text-slate-900 mb-2">
-              <span>${property.price}</span>
-              <span className="text-lg text-slate-600 font-normal">/nuit</span>
+          <div className="top-24 sticky bg-white shadow-lg p-6 border border-slate-200 rounded-3xl">
+            <div className="mb-2 font-bold text-slate-900 text-3xl">
+              <span>
+                {PRICE_SYMBOL}
+                {property.price}
+              </span>
+              <span className="font-normal text-slate-600 text-lg">/nuit</span>
             </div>
-
             {/* Price Breakdown */}
-            <div className="mb-6 pb-6 border-b border-slate-200">
+            <div className="mb-6 pb-6 border-slate-200 border-b">
               <div className="space-y-2 text-sm">
                 {checkInDate && checkOutDate && (
                   <>
                     <div className="flex justify-between text-slate-600">
                       <span>
                         {Math.ceil(
-                          (new Date(checkOutDate).getTime() -
-                            new Date(checkInDate).getTime()) /
+                          (new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) /
                             (1000 * 60 * 60 * 24)
                         )}{' '}
-                        nuits × ${property.price}
+                        nuits × {PRICE_SYMBOL}
+                        {property.price}
                       </span>
                       <span>
-                        $
+                        {PRICE_SYMBOL}
                         {(
                           property.price *
                           Math.ceil(
-                            (new Date(checkOutDate).getTime() -
-                              new Date(checkInDate).getTime()) /
+                            (new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) /
                               (1000 * 60 * 60 * 24)
                           ) *
                           guests
@@ -299,16 +367,13 @@ export const PropertyDetail: React.FC<PropertyDetailProps> = ({
                       </span>
                     </div>
                     <div className="flex justify-between text-slate-600">
+                      <span>Dépôt de garantie (30%)</span>
                       <span>
-                        Dépôt de garantie (30%)
-                      </span>
-                      <span>
-                        $
+                        {PRICE_SYMBOL}
                         {(
                           property.price *
                           Math.ceil(
-                            (new Date(checkOutDate).getTime() -
-                              new Date(checkInDate).getTime()) /
+                            (new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) /
                               (1000 * 60 * 60 * 24)
                           ) *
                           guests *
@@ -316,15 +381,14 @@ export const PropertyDetail: React.FC<PropertyDetailProps> = ({
                         ).toFixed(2)}
                       </span>
                     </div>
-                    <div className="flex justify-between font-bold text-slate-900 pt-2">
+                    <div className="flex justify-between pt-2 font-bold text-slate-900">
                       <span>Total</span>
                       <span>
-                        $
+                        {PRICE_SYMBOL}
                         {(
                           property.price *
                           Math.ceil(
-                            (new Date(checkOutDate).getTime() -
-                              new Date(checkInDate).getTime()) /
+                            (new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) /
                               (1000 * 60 * 60 * 24)
                           ) *
                           guests *
@@ -336,7 +400,6 @@ export const PropertyDetail: React.FC<PropertyDetailProps> = ({
                 )}
               </div>
             </div>
-
             <div className="space-y-4 mb-6">
               <Calendar
                 propertyId={property.id}
@@ -345,13 +408,13 @@ export const PropertyDetail: React.FC<PropertyDetailProps> = ({
                 minDays={1}
               />
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <label className="block mb-2 font-semibold text-slate-700 text-sm">
                   Nombre de voyageurs
                 </label>
                 <select
                   value={guests}
                   onChange={(e) => setGuests(Number(e.target.value))}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                  className="px-4 py-2 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 w-full"
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
                     <option key={n} value={n}>
@@ -361,11 +424,10 @@ export const PropertyDetail: React.FC<PropertyDetailProps> = ({
                 </select>
               </div>
             </div>
-
             <button
               onClick={handleReserve}
               disabled={isOwner}
-              className={`w-full py-3 font-bold rounded-lg transition mb-4 ${
+              className={`w-full py-3 font-bold rounded-xl transition mb-4 ${
                 isOwner
                   ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
                   : 'bg-gradient-fluid text-white hover:shadow-lg hover:shadow-primary-500/50'
@@ -373,8 +435,7 @@ export const PropertyDetail: React.FC<PropertyDetailProps> = ({
             >
               {isOwner ? 'Votre annonce (non réservable)' : 'Réserver maintenant'}
             </button>
-
-            <p className="text-center text-sm text-slate-600">
+            <p className="text-slate-600 text-sm text-center">
               Vous ne serez facturé du dépôt que si l'hôte accepte
             </p>
           </div>

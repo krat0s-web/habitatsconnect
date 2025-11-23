@@ -1,177 +1,149 @@
 'use client';
-
-import { useState, useEffect } from 'react';
-import {
-  FaHome,
-  FaBars,
-  FaTimes,
-  FaUser,
-  FaSignOutAlt,
-  FaPlus,
-  FaSearch,
-} from 'react-icons/fa';
+import { useState } from 'react';
+import { FaHome, FaBars, FaTimes, FaUser, FaSignOutAlt, FaPlus, FaSearch } from 'react-icons/fa';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
-
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 interface NavbarProps {
   userRole?: 'client' | 'owner' | 'admin';
   userName?: string;
 }
-
-export const Navbar: React.FC<NavbarProps> = ({
-  userRole,
-  userName,
-}) => {
+export const Navbar: React.FC<NavbarProps> = ({ userRole, userName }) => {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
   const { user, isAuthenticated, logout } = useAuthStore();
-
   const toggleMenu = () => setIsOpen(!isOpen);
-  
   // Utilise les données du store ou les props
   const displayName = user?.firstName || userName || 'Utilisateur';
   const displayRole = user?.role || userRole;
   const isAuth = user ? true : isAuthenticated;
-
   const handleLogout = () => {
     logout();
     setIsOpen(false);
     router.push('/');
   };
-
   return (
-    <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="top-0 z-50 sticky bg-white/95 shadow-lg backdrop-blur-md border-slate-200 border-b">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
-          <Link
-            href="/"
-            className="flex items-center gap-2 group cursor-pointer"
-          >
+          <Link href="/" className="group flex items-center gap-2 cursor-pointer">
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-fluid rounded-lg blur opacity-75 group-hover:opacity-100 transition"></div>
-              <div className="relative bg-white rounded-lg p-2">
-                <FaHome className="text-2xl text-primary-600" />
+              <div className="absolute inset-0 bg-gradient-fluid opacity-75 group-hover:opacity-100 rounded-xl transition blur"></div>
+              <div className="relative bg-white p-2 rounded-xl">
+                <FaHome className="text-primary-600 text-2xl" />
               </div>
             </div>
-            <span className="font-bold text-xl bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent">
+            <span className="bg-clip-text bg-gradient-to-r from-primary-600 to-secondary-600 font-bold text-transparent text-xl">
               HabitatsConnect
             </span>
           </Link>
-
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-6">
-            <div className="flex items-center bg-slate-100 rounded-full px-4 py-2 hover:bg-slate-200 transition">
-              <FaSearch className="text-slate-500 mr-2" />
-              <input
+            <div className="flex items-center bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-full transition">
+              <FaSearch className="mr-2 text-slate-500" />
+              <Input
                 type="text"
                 placeholder="Rechercher..."
-                className="bg-transparent outline-none text-sm w-40"
+                className="bg-transparent shadow-none px-0 border-0 focus-visible:ring-0 w-40 h-6"
               />
             </div>
-
             {isAuth ? (
               <>
                 {displayRole === 'owner' && (
-                  <Link
-                    href="/dashboard/owner/properties/create"
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-fluid rounded-full text-white font-semibold hover:shadow-lg hover:shadow-primary-500/50 transition"
-                  >
-                    <FaPlus /> Créer annonce
-                  </Link>
+                  <Button variant="gradient" size="default" className="rounded-full" asChild>
+                    <Link href="/dashboard/owner/properties/create">
+                      <FaPlus className="mr-2" /> Créer annonce
+                    </Link>
+                  </Button>
                 )}
                 <div className="flex items-center gap-4">
-                  <span className="text-sm text-slate-600">{displayName}</span>
-                  <Link
-                    href={displayRole === 'owner' ? '/dashboard/owner/profile' : '/dashboard/client/profile'}
-                    className="p-2 hover:bg-slate-100 rounded-full transition"
-                  >
-                    <FaUser className="text-primary-600" />
-                  </Link>
-                  <button
+                  <span className="text-slate-600 text-sm">{displayName}</span>
+                  <Button variant="ghost" size="icon" className="rounded-full" asChild>
+                    <Link
+                      href={
+                        displayRole === 'owner'
+                          ? '/dashboard/owner/profile'
+                          : '/dashboard/client/profile'
+                      }
+                    >
+                      <FaUser className="text-primary-600" />
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full"
                     onClick={handleLogout}
-                    className="p-2 hover:bg-slate-100 rounded-full transition"
                   >
                     <FaSignOutAlt className="text-secondary-600" />
-                  </button>
+                  </Button>
                 </div>
               </>
             ) : (
               <>
-                <Link
-                  href="/auth/login"
-                  className="px-6 py-2 text-primary-600 font-semibold hover:bg-primary-50 rounded-full transition"
-                >
-                  Connexion
-                </Link>
-                <Link
-                  href="/auth/register"
-                  className="px-6 py-2 bg-gradient-fluid text-white rounded-full font-semibold hover:shadow-lg transition"
-                >
-                  Inscription
-                </Link>
+                <Button variant="ghost" size="default" className="rounded-full" asChild>
+                  <Link href="/auth/login">Connexion</Link>
+                </Button>
+                <Button variant="gradient" size="default" className="rounded-full" asChild>
+                  <Link href="/auth/register">Inscription</Link>
+                </Button>
               </>
             )}
           </div>
-
           {/* Mobile Menu Button */}
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden rounded-full"
             onClick={toggleMenu}
-            className="md:hidden p-2 hover:bg-slate-100 rounded-full transition"
           >
             {isOpen ? <FaTimes size={24} /> : <FaBars size={24} />}
-          </button>
+          </Button>
         </div>
-
         {/* Mobile Menu */}
         {isOpen && (
-          <div className="md:hidden pb-6 space-y-3 animate-fade-in">
-            <div className="flex items-center bg-slate-100 rounded-full px-4 py-2">
-              <FaSearch className="text-slate-500 mr-2" />
-              <input
+          <div className="md:hidden space-y-3 pb-6">
+            <div className="flex items-center bg-slate-100 px-4 py-2 rounded-full">
+              <FaSearch className="mr-2 text-slate-500" />
+              <Input
                 type="text"
                 placeholder="Rechercher..."
-                className="bg-transparent outline-none text-sm flex-1"
+                className="flex-1 bg-transparent shadow-none px-0 border-0 focus-visible:ring-0 h-6"
               />
             </div>
             {isAuth ? (
               <>
                 {displayRole === 'owner' && (
-                  <Link
-                    href="/dashboard/owner/properties/create"
-                    className="block px-4 py-2 bg-gradient-fluid rounded-full text-white font-semibold"
-                  >
-                    Créer annonce
-                  </Link>
+                  <Button variant="gradient" className="rounded-full w-full" asChild>
+                    <Link href="/dashboard/owner/properties/create">Créer annonce</Link>
+                  </Button>
                 )}
-                <Link
-                  href={displayRole === 'owner' ? '/dashboard/owner/profile' : '/dashboard/client/profile'}
-                  className="block px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg"
-                >
-                  Profil
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="block w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg"
-                >
+                <Button variant="ghost" className="justify-start w-full" asChild>
+                  <Link
+                    href={
+                      displayRole === 'owner'
+                        ? '/dashboard/owner/profile'
+                        : '/dashboard/client/profile'
+                    }
+                  >
+                    Profil
+                  </Link>
+                </Button>
+                <Button variant="ghost" className="justify-start w-full" onClick={handleLogout}>
                   Déconnexion
-                </button>
+                </Button>
               </>
             ) : (
               <>
-                <Link
-                  href="/auth/login"
-                  className="block px-4 py-2 text-primary-600 font-semibold"
-                >
-                  Connexion
-                </Link>
-                <Link
-                  href="/auth/register"
-                  className="block px-4 py-2 bg-gradient-fluid text-white rounded-full font-semibold"
-                >
-                  Inscription
-                </Link>
+                <Button variant="ghost" className="w-full" asChild>
+                  <Link href="/auth/login">Connexion</Link>
+                </Button>
+                <Button variant="gradient" className="rounded-full w-full" asChild>
+                  <Link href="/auth/register">Inscription</Link>
+                </Button>
               </>
             )}
           </div>

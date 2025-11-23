@@ -13,7 +13,7 @@ const mockProperty: Property = {
     'Magnifique villa avec piscine et vue panoramique sur la mer Méditerranée. Cette propriété offre un confort suprême avec des équipements modernes et un design élégant.',
   type: 'villa',
   price: 250,
-  location: 'Côte d\'Azur',
+  location: "Côte d'Azur",
   address: '123 Rue de la Plage',
   bedrooms: 4,
   bathrooms: 3,
@@ -62,10 +62,15 @@ const mockProperty: Property = {
 
 export default function PropertyPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const { getPropertyById, loadProperties, properties, loading: propertiesLoading } = usePropertyStore();
+  const {
+    getPropertyById,
+    loadProperties,
+    properties,
+    loading: propertiesLoading,
+  } = usePropertyStore();
   const { user } = useAuthStore();
   const { addConversation, loadConversations, conversations } = useMessageStore();
-  const { reservations, loadReservations } = useReservationStore();
+  const { reservations, loadReservations, addReservation } = useReservationStore();
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -95,7 +100,7 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
     }
   }, [params.id, getPropertyById, properties, propertiesLoading]);
 
-  const handleReserve = (reservation: Partial<Reservation>) => {
+  const handleReserve = async (reservation: Partial<Reservation>) => {
     if (!user) {
       alert('Veuillez vous connecter pour réserver');
       router.push('/auth/login');
@@ -114,39 +119,59 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
       return;
     }
 
-    // Créer la réservation
-    const newReservation: Reservation = {
-      id: Math.random().toString(),
-      propertyId: property.id,
-      property,
-      clientId: user.id,
-      client: user,
-      checkIn: reservation.checkIn || new Date(),
-      checkOut: reservation.checkOut || new Date(),
-      guests: reservation.guests || 1,
-      totalPrice: reservation.totalPrice || 0,
-      depositAmount: reservation.depositAmount || 0,
-      status: 'pending',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    try {
+      // Créer la réservation via l'API
+      console.log('Creating reservation with data:', {
+        propertyId: property.id,
+        clientId: user.id,
+        checkIn: reservation.checkIn,
+        checkOut: reservation.checkOut,
+        guests: reservation.guests || 1,
+        totalPrice: reservation.totalPrice || 0,
+        depositAmount: reservation.depositAmount || 0,
+        status: 'pending',
+      });
 
-    // Sauvegarder dans localStorage
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('habitatsconnect_reservations');
-      const allReservations = stored ? JSON.parse(stored) : [];
-      allReservations.push(newReservation);
-      localStorage.setItem(
-        'habitatsconnect_reservations',
-        JSON.stringify(allReservations)
+      const response = await fetch('/api/reservations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          propertyId: property.id,
+          clientId: user.id,
+          checkIn: reservation.checkIn,
+          checkOut: reservation.checkOut,
+          guests: reservation.guests || 1,
+          totalPrice: reservation.totalPrice || 0,
+          depositAmount: reservation.depositAmount || 0,
+          status: 'pending',
+        }),
+      });
+
+      console.log('Response status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('API error:', errorData);
+        throw new Error(errorData.error || 'Failed to create reservation');
+      }
+
+      const data = await response.json();
+      console.log('Reservation created:', data);
+
+      // Ajouter la réservation au store
+      addReservation(data.reservation);
+
+      alert('Réservation créée avec succès! Le propriétaire doit la confirmer.');
+      router.push('/dashboard/client/reservations');
+    } catch (error) {
+      console.error('Error creating reservation:', error);
+      alert(
+        `Erreur lors de la création de la réservation: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
-
-    alert('Réservation créée avec succès! Le propriétaire doit la confirmer.');
-    router.push('/dashboard/client/reservations');
   };
 
-  const handleContact = () => {
+  const handleContact = async () => {
     if (!user) {
       alert('Veuillez vous connecter pour contacter le propriétaire');
       router.push('/auth/login');
@@ -167,44 +192,103 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
 
     // Vérifier si une conversation existe déjà
     let existingConversation = conversations.find(
-      (c) =>
-        c.clientId === user.id &&
-        c.ownerId === property.ownerId
+      (c) => c.clientId === user.id && c.ownerId === property.ownerId
     );
 
     if (!existingConversation) {
-      // Créer une nouvelle conversation
-      const newConversation: Conversation = {
-        id: Math.random().toString(),
-        ownerId: property.ownerId,
-        clientId: user.id,
-        clientName: `${user.firstName} ${user.lastName}`,
-        ownerName: `${property.owner?.firstName} ${property.owner?.lastName}`,
-        lastMessage: 'Conversation commencée',
-        lastMessageTime: new Date(),
-        unread: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      // Créer une nouvelle conversation via l'API
+      try {
+        console.log('Creating conversation via API...');
+        const response = await fetch('/api/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clientId: user.id,
+            ownerId: property.ownerId,
+            lastMessage: 'Conversation commencée',
+          }),
+        });
 
-      addConversation(newConversation);
-
-      // Sauvegarder dans localStorage
-      if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem('habitatsconnect_conversations');
-        const allConversations = stored ? JSON.parse(stored) : [];
-        allConversations.push(newConversation);
-        localStorage.setItem(
-          'habitatsconnect_conversations',
-          JSON.stringify(allConversations)
-        );
+        if (response.ok) {
+          const data = await response.json();
+          existingConversation = data.conversation;
+          console.log('Conversation created:', existingConversation);
+          // Ajouter à l'état local
+          addConversation(existingConversation);
+        } else {
+          throw new Error('Failed to create conversation');
+        }
+      } catch (error) {
+        console.error('Error creating conversation:', error);
+        // Fallback: créer localement seulement
+        const newConversation: Conversation = {
+          id: Math.random().toString(),
+          ownerId: property.ownerId,
+          clientId: user.id,
+          clientName: `${user.firstName} ${user.lastName}`,
+          ownerName: `${property.owner?.firstName} ${property.owner?.lastName}`,
+          lastMessage: 'Conversation commencée',
+          lastMessageTime: new Date(),
+          unread: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        existingConversation = newConversation;
+        addConversation(newConversation);
+        console.log('Created local conversation as fallback:', existingConversation);
       }
-
-      existingConversation = newConversation;
     }
 
-    // Rediriger vers le chat
-    router.push('/dashboard/client/chat');
+    // Créer un message par défaut en français
+    const defaultMessageText = `Bonjour, je suis intéressé par l'annonce "${property.title}". Je souhaite prendre des informations supplémentaires et organiser une visite. Pouvez-vous me contacter ?`;
+
+    // Envoyer le message via l'API pour qu'il soit persisté
+    const { sendMessage } = useMessageStore.getState();
+    try {
+      const sentMessage = await sendMessage(existingConversation.id, user.id, defaultMessageText);
+      if (sentMessage) {
+        // Message envoyé avec succès, mettre à jour la conversation
+        const { updateConversation } = useMessageStore.getState();
+        updateConversation(existingConversation.id, {
+          lastMessage: defaultMessageText,
+          lastMessageTime: sentMessage.timestamp,
+          unread: true,
+        });
+      }
+    } catch (error) {
+      console.error('Error sending default message:', error);
+      // Fallback: ajouter le message localement si l'API échoue
+      const defaultMessage: Message = {
+        id: Math.random().toString(),
+        conversationId: existingConversation.id,
+        senderId: user.id,
+        text: defaultMessageText,
+        timestamp: new Date(),
+        read: false,
+      };
+
+      const { addMessage, updateConversation } = useMessageStore.getState();
+      addMessage(existingConversation.id, defaultMessage);
+      updateConversation(existingConversation.id, {
+        lastMessage: defaultMessageText,
+        lastMessageTime: defaultMessage.timestamp,
+        unread: true,
+      });
+
+      // Sauvegarder le message dans localStorage
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('habitatsconnect_messages');
+        const allMessages = stored ? JSON.parse(stored) : {};
+        if (!allMessages[existingConversation.id]) {
+          allMessages[existingConversation.id] = [];
+        }
+        allMessages[existingConversation.id].push(defaultMessage);
+        localStorage.setItem('habitatsconnect_messages', JSON.stringify(allMessages));
+      }
+    }
+
+    // Rediriger vers le chat avec la conversation sélectionnée
+    router.push(`/dashboard/client/chat?conversation=${existingConversation.id}`);
   };
 
   if (loading) {
@@ -212,13 +296,11 @@ export default function PropertyPage({ params }: { params: { id: string } }) {
   }
 
   if (!property) {
-    return <div className="text-center py-12">Propriété non trouvée</div>;
+    return <div className="py-12 text-center">Propriété non trouvée</div>;
   }
 
   // Filtrer les réservations de la propriété courante
-  const propertyReservations = reservations.filter(
-    (r) => r.propertyId === property.id
-  );
+  const propertyReservations = reservations.filter((r) => r.propertyId === property.id);
 
   return (
     <PropertyDetail

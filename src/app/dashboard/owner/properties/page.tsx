@@ -15,132 +15,186 @@ import {
 import Link from 'next/link';
 import { useAuthStore, usePropertyStore } from '@/store';
 import type { Property } from '@/types';
+import { PRICE_SYMBOL } from '@/lib/static';
+import { motion } from 'framer-motion';
 
 export default function PropertiesPage() {
-  const [properties, setProperties] = useState<Property[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
   const { user } = useAuthStore();
-  const { properties: storeProperties, loadProperties } = usePropertyStore();
+  const {
+    properties,
+    deleteProperty,
+    updateProperty,
+    subscribeToProperties,
+    unsubscribeFromProperties,
+  } = usePropertyStore();
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
-    
-    loadProperties();
-  }, [mounted, loadProperties]);
-
-  useEffect(() => {
-    if (user && storeProperties.length > 0) {
-      const userProperties = storeProperties.filter((p) => p.ownerId === user.id);
-      setProperties(userProperties);
-    } else if (user && typeof window !== 'undefined') {
-      const stored = localStorage.getItem('habitatsconnect_properties');
-      if (stored) {
-        try {
-          const allProperties = JSON.parse(stored);
-          const userProperties = allProperties.filter(
-            (p: any) => p.ownerId === user.id
-          );
-          setProperties(userProperties);
-        } catch (error) {
-          console.error('Erreur lors du chargement des propriétés:', error);
-        }
-      }
+    if (user?.id) {
+      // Subscribe to real-time properties for this owner
+      subscribeToProperties(user.id);
     }
-  }, [user, storeProperties]);
 
-  const handleDelete = (id: string) => {
-    const updatedProperties = properties.filter((p) => p.id !== id);
-    setProperties(updatedProperties);
-    
-    // Mettre à jour localStorage
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('habitatsconnect_properties');
-      if (stored) {
-        const allProperties = JSON.parse(stored);
-        const filtered = allProperties.filter((p: any) => p.id !== id);
-        localStorage.setItem('habitatsconnect_properties', JSON.stringify(filtered));
-      }
+    return () => {
+      unsubscribeFromProperties();
+    };
+  }, [user?.id, subscribeToProperties, unsubscribeFromProperties]);
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteProperty(id);
+      setShowDeleteConfirm(null);
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+      alert('Erreur lors de la suppression de la propriété');
     }
-    setShowDeleteConfirm(null);
   };
 
-  const toggleStatus = (id: string) => {
-    const updated = properties.map((p) =>
-      p.id === id
-        ? { ...p, isAvailable: !p.isAvailable }
-        : p
-    );
-    setProperties(updated);
-    
-    // Mettre à jour localStorage
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('habitatsconnect_properties');
-      if (stored) {
-        const allProperties = JSON.parse(stored);
-        const updatedAll = allProperties.map((p: any) =>
-          p.id === id ? { ...p, isAvailable: !p.isAvailable } : p
-        );
-        localStorage.setItem('habitatsconnect_properties', JSON.stringify(updatedAll));
-      }
+  const toggleStatus = async (id: string) => {
+    const property = properties.find((p) => p.id === id);
+    if (!property) return;
+
+    try {
+      await updateProperty(id, { isAvailable: !property.isAvailable });
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour:', error);
+      alert('Erreur lors de la mise à jour du statut');
     }
   };
 
   const activeCount = properties.filter((p) => p.isAvailable).length;
-  
-  const revenue = properties
-    .filter((p) => p.isAvailable)
-    .reduce((sum, p) => sum + p.price, 0);
+
+  const revenue = properties.filter((p) => p.isAvailable).reduce((sum, p) => sum + p.price, 0);
 
   return (
-    <div className="space-y-8">
+    <motion.div
+      className="space-y-8"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+    >
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-primary-500">
-          <div className="text-sm text-slate-600 font-semibold">Total Annonces</div>
-          <div className="text-3xl font-bold text-primary-600 mt-2">
+      <motion.div
+        className="gap-6 grid grid-cols-1 md:grid-cols-3"
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: { opacity: 0 },
+          visible: {
+            opacity: 1,
+            transition: {
+              staggerChildren: 0.2,
+            },
+          },
+        }}
+      >
+        <motion.div
+          className="bg-white shadow-md p-6 border-primary-500 border-l-4 rounded-xl"
+          variants={{
+            hidden: { opacity: 0, y: 20 },
+            visible: { opacity: 1, y: 0 },
+          }}
+          whileHover={{ scale: 1.02, y: -4 }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="font-semibold text-slate-600 text-sm">Total Annonces</div>
+          <motion.div
+            className="mt-2 font-bold text-primary-600 text-3xl"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
+          >
             {properties.length}
-          </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-accent-500">
-          <div className="text-sm text-slate-600 font-semibold">Annonces Actives</div>
-          <div className="text-3xl font-bold text-accent-600 mt-2">
+          </motion.div>
+        </motion.div>
+        <motion.div
+          className="bg-white shadow-md p-6 border-accent-500 border-l-4 rounded-xl"
+          variants={{
+            hidden: { opacity: 0, y: 20 },
+            visible: { opacity: 1, y: 0 },
+          }}
+          whileHover={{ scale: 1.02, y: -4 }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="font-semibold text-slate-600 text-sm">Annonces Actives</div>
+          <motion.div
+            className="mt-2 font-bold text-3xl text-accent-600"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.5, type: 'spring', stiffness: 200 }}
+          >
             {activeCount}
-          </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-secondary-500">
-          <div className="text-sm text-slate-600 font-semibold">Revenus (Tarif/Nuit)</div>
-          <div className="text-3xl font-bold text-secondary-600 mt-2">
-            {revenue.toLocaleString()}€
-          </div>
-        </div>
-      </div>
+          </motion.div>
+        </motion.div>
+        <motion.div
+          className="bg-white shadow-md p-6 border-secondary-500 border-l-4 rounded-xl"
+          variants={{
+            hidden: { opacity: 0, y: 20 },
+            visible: { opacity: 1, y: 0 },
+          }}
+          whileHover={{ scale: 1.02, y: -4 }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="font-semibold text-slate-600 text-sm">Revenus (Tarif/Nuit)</div>
+          <motion.div
+            className="mt-2 font-bold text-secondary-600 text-3xl"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.7, type: 'spring', stiffness: 200 }}
+          >
+            {revenue.toLocaleString()}
+            {PRICE_SYMBOL}
+          </motion.div>
+        </motion.div>
+      </motion.div>
 
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-900">Mes Annonces</h2>
-        <Link
-          href="/dashboard/owner/properties/create"
-          className="flex items-center gap-2 px-6 py-3 bg-gradient-fluid text-white rounded-lg hover:shadow-lg transition"
-        >
-          <FaPlus /> Créer Annonce
-        </Link>
-      </div>
+      <motion.div
+        className="flex justify-between items-center"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
+        <h2 className="font-bold text-slate-900 text-2xl">Mes Annonces</h2>
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+          <Link
+            href="/dashboard/owner/properties/create"
+            className="flex items-center gap-2 bg-gradient-fluid hover:shadow-lg px-6 py-3 rounded-lg text-white transition"
+          >
+            <FaPlus /> Créer Annonce
+          </Link>
+        </motion.div>
+      </motion.div>
 
       {/* Properties Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {properties.map((property) => (
-          <div
+      <motion.div
+        className="gap-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: { opacity: 0 },
+          visible: {
+            opacity: 1,
+            transition: {
+              staggerChildren: 0.1,
+            },
+          },
+        }}
+      >
+        {properties.map((property, index) => (
+          <motion.div
             key={property.id}
-            className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition group"
+            className="group bg-white shadow-md hover:shadow-xl rounded-xl overflow-hidden transition"
+            variants={{
+              hidden: { opacity: 0, y: 30 },
+              visible: { opacity: 1, y: 0 },
+            }}
+            whileHover={{ y: -8, scale: 1.02 }}
+            transition={{ duration: 0.3 }}
           >
             {/* Image */}
-            <div className="relative h-48 bg-slate-200 overflow-hidden">
-              <div
+            <div className="relative bg-slate-200 h-48 overflow-hidden">
+              <motion.div
                 className="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition"
                 style={{
                   backgroundImage: `url(${
@@ -149,116 +203,209 @@ export default function PropertiesPage() {
                       : 'https://via.placeholder.com/500x300?text=No+Image'
                   })`,
                 }}
+                whileHover={{ scale: 1.1 }}
+                transition={{ duration: 0.3 }}
               />
-              <div
+              <motion.div
                 className={`absolute top-4 right-4 px-3 py-1 rounded-full text-sm font-semibold text-white ${
                   property.isAvailable ? 'bg-green-500' : 'bg-orange-500'
                 }`}
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.5 + index * 0.1 }}
               >
                 {property.isAvailable ? 'Actif' : 'Inactif'}
-              </div>
+              </motion.div>
             </div>
 
             {/* Content */}
             <div className="p-5">
-              <h3 className="font-bold text-slate-900 text-lg mb-2">
+              <motion.h3
+                className="mb-2 font-bold text-slate-900 text-lg"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 + index * 0.1 }}
+              >
                 {property.title}
-              </h3>
+              </motion.h3>
 
-              <div className="flex items-center gap-2 text-slate-600 text-sm mb-3">
+              <motion.div
+                className="flex items-center gap-2 mb-3 text-slate-600 text-sm"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 + index * 0.1 }}
+              >
                 <FaMapMarkerAlt className="text-primary-500" />
                 {property.location}
-              </div>
+              </motion.div>
 
               {/* Details Grid */}
-              <div className="grid grid-cols-3 gap-3 mb-4 pb-4 border-b border-slate-200 text-center text-sm">
+              <motion.div
+                className="gap-3 grid grid-cols-3 mb-4 pb-4 border-slate-200 border-b text-sm text-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 + index * 0.1 }}
+              >
                 <div>
-                  <div className="flex items-center justify-center gap-1 text-slate-600">
+                  <div className="flex justify-center items-center gap-1 text-slate-600">
                     <FaBed /> {property.bedrooms}
                   </div>
-                  <div className="text-xs text-slate-500">Chambres</div>
+                  <div className="text-slate-500 text-xs">Chambres</div>
                 </div>
                 <div>
-                  <div className="flex items-center justify-center gap-1 text-slate-600">
+                  <div className="flex justify-center items-center gap-1 text-slate-600">
                     <FaBath /> {property.bathrooms}
                   </div>
-                  <div className="text-xs text-slate-500">Salle(s)</div>
+                  <div className="text-slate-500 text-xs">Salle(s)</div>
                 </div>
                 <div>
-                  <div className="flex items-center justify-center gap-1 text-amber-500">
+                  <div className="flex justify-center items-center gap-1 text-amber-500">
                     <FaStar /> 0
                   </div>
-                  <div className="text-xs text-slate-500">(0)</div>
+                  <div className="text-slate-500 text-xs">(0)</div>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Price */}
-              <div className="text-2xl font-bold text-primary-600 mb-4">
-                {property.price}€<span className="text-sm text-slate-600">/nuit</span>
-              </div>
+              <motion.div
+                className="mb-4 font-bold text-primary-600 text-2xl"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.5 + index * 0.1, type: 'spring', stiffness: 200 }}
+              >
+                {property.price}
+                {PRICE_SYMBOL}
+                <span className="text-slate-600 text-sm">/nuit</span>
+              </motion.div>
 
               {/* Actions */}
-              <div className="flex gap-2">
-                <Link
-                  href={`/properties/${property.id}`}
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-primary-50 text-primary-600 rounded-lg hover:bg-primary-100 transition font-semibold text-sm"
+              <motion.div
+                className="flex gap-2"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 + index * 0.1 }}
+              >
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex flex-1"
                 >
-                  <FaEye /> Voir
-                </Link>
-                <Link
-                  href={`/dashboard/owner/properties/${property.id}/edit`}
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition font-semibold text-sm"
+                  <Link
+                    href={`/properties/${property.id}`}
+                    className="flex flex-1 justify-center items-center gap-2 bg-primary-50 hover:bg-primary-100 px-3 py-2 rounded-lg font-semibold text-primary-600 text-sm transition"
+                  >
+                    <FaEye /> Voir
+                  </Link>
+                </motion.div>
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex flex-1"
                 >
-                  <FaEdit /> Modifier
-                </Link>
-                <button
-                  onClick={() => setShowDeleteConfirm(property.id)}
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition font-semibold text-sm"
+                  <Link
+                    href={`/dashboard/owner/properties/${property.id}/edit`}
+                    className="flex flex-1 justify-center items-center gap-2 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg font-semibold text-blue-600 text-sm transition"
+                  >
+                    <FaEdit /> Modifier
+                  </Link>
+                </motion.div>
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex flex-1"
                 >
-                  <FaTrash /> Supprimer
-                </button>
-              </div>
+                  <button
+                    onClick={() => setShowDeleteConfirm(property.id)}
+                    className="flex flex-1 justify-center items-center gap-2 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-lg font-semibold text-red-600 text-sm transition"
+                  >
+                    <FaTrash /> Supprimer
+                  </button>
+                </motion.div>
+              </motion.div>
 
               {/* Delete Confirmation */}
               {showDeleteConfirm === property.id && (
-                <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-200">
-                  <p className="text-sm text-red-800 font-semibold mb-3">
+                <motion.div
+                  className="bg-red-50 mt-4 p-4 border border-red-200 rounded-lg"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <p className="mb-3 font-semibold text-red-800 text-sm">
                     Êtes-vous sûr de vouloir supprimer cette annonce?
                   </p>
                   <div className="flex gap-2">
-                    <button
+                    <motion.button
                       onClick={() => handleDelete(property.id)}
-                      className="flex-1 px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-semibold text-sm"
+                      className="flex-1 bg-red-500 hover:bg-red-600 px-3 py-2 rounded-lg font-semibold text-white text-sm transition"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                     >
                       Supprimer
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
                       onClick={() => setShowDeleteConfirm(null)}
-                      className="flex-1 px-3 py-2 bg-slate-300 text-slate-700 rounded-lg hover:bg-slate-400 transition font-semibold text-sm"
+                      className="flex-1 bg-slate-300 hover:bg-slate-400 px-3 py-2 rounded-lg font-semibold text-slate-700 text-sm transition"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                     >
                       Annuler
-                    </button>
+                    </motion.button>
                   </div>
-                </div>
+                </motion.div>
               )}
             </div>
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       {properties.length === 0 && (
-        <div className="text-center py-12">
-          <FaHome className="text-6xl text-slate-300 mx-auto mb-4" />
-          <p className="text-xl text-slate-600 font-semibold">Aucune annonce</p>
-          <p className="text-slate-500 mb-6">Créez votre première annonce pour commencer</p>
-          <Link
-            href="/dashboard/owner/properties/create"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-fluid text-white rounded-lg hover:shadow-lg transition"
+        <motion.div
+          className="py-12 text-center"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
           >
-            <FaPlus /> Créer Annonce
-          </Link>
-        </div>
+            <FaHome className="mx-auto mb-4 text-slate-300 text-6xl" />
+          </motion.div>
+          <motion.p
+            className="font-semibold text-slate-600 text-xl"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            Aucune annonce
+          </motion.p>
+          <motion.p
+            className="mb-6 text-slate-500"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            Créez votre première annonce pour commencer
+          </motion.p>
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <Link
+              href="/dashboard/owner/properties/create"
+              className="inline-flex items-center gap-2 bg-gradient-fluid hover:shadow-lg px-6 py-3 rounded-lg text-white transition"
+            >
+              <FaPlus /> Créer Annonce
+            </Link>
+          </motion.div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }
