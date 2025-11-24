@@ -1,0 +1,13 @@
+{
+  "markdown-pdf.executablePath": "",
+  "markdown-pdf.highlightStyle": "github.css",
+  "markdown-pdf.breaks": true,
+  "markdown-pdf.emoji": true,
+  "markdown-pdf.markdown-it-include.enable": true,
+  "markdown-pdf.displayHeaderFooter": false,
+  "markdown-pdf.scale": 1,
+  "markdown.mermaid.enabled": true,
+  "[markdown]": {
+    "editor.wordWrap": "on"
+  }
+}

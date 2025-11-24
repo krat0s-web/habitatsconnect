@@ -9,6 +9,7 @@ import {
   FaPhone,
   FaEnvelope,
   FaHourglass,
+  FaBuilding,
 } from 'react-icons/fa';
 import Link from 'next/link';
 import { useAuthStore, useReservationStore, useTransactionStore, usePropertyStore } from '@/store';
@@ -24,7 +25,7 @@ export default function OwnerReservationsPage() {
     unsubscribeFromReservations,
   } = useReservationStore();
   const { addTransaction } = useTransactionStore();
-  const { properties } = usePropertyStore();
+  const { properties, loading: propertiesLoading } = usePropertyStore();
   const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'rejected' | 'completed'>(
     'pending'
   );
@@ -32,11 +33,21 @@ export default function OwnerReservationsPage() {
 
   // Filter reservations for properties owned by this user
   const ownerReservations = reservations.filter((r) => r.property?.ownerId === user?.id);
+  const ownerProperties = properties.filter((p) => p.ownerId === user?.id);
 
   useEffect(() => {
     if (user?.id) {
       // Subscribe to all reservations (we'll filter client-side by property owner)
       subscribeToReservations();
+      // Also load properties to ensure we have them for filtering
+      const loadProperties = async () => {
+        try {
+          await usePropertyStore.getState().loadProperties();
+        } catch (error) {
+          console.error('Error loading properties:', error);
+        }
+      };
+      loadProperties();
     }
 
     return () => {
@@ -107,6 +118,8 @@ export default function OwnerReservationsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
   const handleReleaseDeposit = async (reservation: Reservation) => {
     if (!user?.id) return;
 
@@ -190,6 +203,15 @@ export default function OwnerReservationsPage() {
     return (
       <div className="py-12 text-center">
         <p className="text-slate-600 text-lg">Veuillez vous connecter pour voir vos réservations</p>
+      </div>
+    );
+  }
+
+  if (propertiesLoading) {
+    return (
+      <div className="py-12 text-center">
+        <div className="border-primary-600 mx-auto mb-4 border-4 border-t-transparent rounded-full w-16 h-16 animate-spin"></div>
+        <p className="text-slate-600 text-lg">Chargement des réservations...</p>
       </div>
     );
   }
@@ -365,14 +387,27 @@ export default function OwnerReservationsPage() {
         <div className="bg-white py-12 rounded-xl text-center">
           <FaCalendarAlt className="mx-auto mb-4 text-slate-300 text-6xl" />
           <p className="font-semibold text-slate-600 text-xl">Aucune réservation</p>
-          <p className="text-slate-500">
+          <p className="text-slate-500 mb-4">
             {filter === 'pending'
               ? "Vous n'avez pas de réservation en attente"
               : 'Aucune réservation avec ce statut'}
           </p>
+          {ownerProperties.length === 0 && (
+            <div className="mt-4">
+              <p className="text-slate-500 text-sm mb-2">
+                Vous n'avez pas encore d'annonces publiées.
+              </p>
+              <Link
+                href="/dashboard/owner/properties"
+                className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 px-4 py-2 rounded-lg font-semibold text-white transition"
+              >
+                <FaBuilding /> Créer ma première annonce
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
-}
+

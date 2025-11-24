@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HabitatsConnect - Présentation</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #0ea5e9;
+            --secondary: #ec4899;
+            --accent: #f59e0b;
+            --dark: #0f172a;
+            --light: #f8fafc;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--dark) 0%, #1e293b 100%);
+            color: var(--light);
+            overflow-x: hidden;
+        }
+
+        .presentation-container {
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .slide {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: translateY(0);
+            position: relative;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradient-shift 3s ease infinite;
+            background-size: 200% 200%;
+        }
+
+        @keyframes gradient-shift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(14, 165, 233, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(236, 72, 153, 0.6); }
+        }
+
+        h1 {
+            font-size: 5rem;
+            font-weight: 800;
+            margin-bottom: 2rem;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        h2 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        h3 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+
+        p {
+            font-size: 1.3rem;
+            line-height: 1.8;
+            margin-bottom: 1rem;
+            text-align: center;
+            max-width: 900px;
+        }
+
+        .subtitle {
+            font-size: 1.8rem;
+            opacity: 0.9;
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 2rem auto;
+        }
+
+        .feature-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(14, 165, 233, 0.3);
+            border-radius: 20px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            animation: pulse-glow 3s ease infinite;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px) scale(1.05);
+            border-color: var(--secondary);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            animation: float 3s ease infinite;
+        }
+
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+
+        .tech-badge {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .tech-badge:hover {
+            transform: scale(1.1);
+            box-shadow: 0 10px 30px rgba(14, 165, 233, 0.5);
+        }
+
+        .navigation {
+            position: fixed;
+            bottom: 3rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 1rem;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            border: 2px solid rgba(14, 165, 233, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 10px 30px rgba(14, 165, 233, 0.5);
+        }
+
+        .slide-counter {
+            position: fixed;
+            top: 3rem;
+            right: 3rem;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            border: 2px solid rgba(14, 165, 233, 0.3);
+            font-size: 1.2rem;
+            font-weight: 600;
+            z-index: 1000;
+        }
+
+        .logo {
+            font-size: 4rem;
+            margin-bottom: 2rem;
+            animation: float 3s ease infinite;
+        }
+
+        ul {
+            list-style: none;
+            max-width: 800px;
+            margin: 2rem auto;
+        }
+
+        li {
+            font-size: 1.3rem;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            background: rgba(14, 165, 233, 0.1);
+            border-left: 4px solid var(--primary);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        li:hover {
+            background: rgba(14, 165, 233, 0.2);
+            transform: translateX(10px);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 2rem auto;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 2px solid rgba(14, 165, 233, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--secondary);
+        }
+
+        .stat-number {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 1.2rem;
+            opacity: 0.8;
+        }
+
+        .timeline {
+            max-width: 900px;
+            margin: 2rem auto;
+            position: relative;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(180deg, var(--primary), var(--secondary));
+        }
+
+        .timeline-item {
+            margin: 2rem 0;
+            position: relative;
+            width: 45%;
+        }
+
+        .timeline-item:nth-child(even) {
+            margin-left: auto;
+        }
+
+        .timeline-content {
+            padding: 2rem;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 2px solid rgba(14, 165, 233, 0.3);
+        }
+
+        .cta-button {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 1.5rem 3rem;
+            border-radius: 50px;
+            font-size: 1.3rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 2rem;
+            transition: all 0.3s ease;
+            animation: pulse-glow 3s ease infinite;
+        }
+
+        .cta-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 20px 50px rgba(14, 165, 233, 0.6);
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            max-width: 1200px;
+            margin: 2rem auto;
+            align-items: start;
+        }
+
+        .column {
+            text-align: left;
+        }
+
+        .emoji {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: inline-block;
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 3rem; }
+            h2 { font-size: 2rem; }
+            h3 { font-size: 1.5rem; }
+            p, li { font-size: 1.1rem; }
+            .slide { padding: 2rem; }
+            .features-grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .two-column { grid-template-columns: 1fr; }
+            .timeline::before { left: 20px; }
+            .timeline-item { width: 100%; margin-left: 40px !important; }
+            .navigation { bottom: 1rem; padding: 0.5rem 1rem; }
+            .nav-btn { padding: 0.7rem 1.5rem; font-size: 1rem; }
+        }
+
+        .background-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.1;
+        }
+
+        .floating-shape {
+            position: absolute;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .shape-1 {
+            width: 300px;
+            height: 300px;
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .shape-2 {
+            width: 200px;
+            height: 200px;
+            top: 60%;
+            right: 15%;
+            animation-delay: 2s;
+        }
+
+        .shape-3 {
+            width: 150px;
+            height: 150px;
+            bottom: 10%;
+            left: 50%;
+            animation-delay: 4s;
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Animation -->
+    <div class="background-animation">
+        <div class="floating-shape shape-1"></div>
+        <div class="floating-shape shape-2"></div>
+        <div class="floating-shape shape-3"></div>
+    </div>
+
+    <!-- Slide Counter -->
+    <div class="slide-counter">
+        <span id="current-slide">1</span> / <span id="total-slides">20</span>
+    </div>
+
+    <div class="presentation-container">
+        <!-- Slide 1: Cover -->
+        <div class="slide active" data-slide="1">
+            <div class="logo">🏡</div>
+            <h1 class="gradient-text">HabitatsConnect</h1>
+            <p class="subtitle">Plateforme Moderne de Gestion Immobilière</p>
+            <p>Une solution complète type Airbnb pour connecter propriétaires et voyageurs</p>
+            <button class="cta-button" onclick="nextSlide()">Commencer la présentation →</button>
+        </div>
+
+        <!-- Slide 2: Vision -->
+        <div class="slide" data-slide="2">
+            <h2 class="gradient-text">Notre Vision</h2>
+            <p class="subtitle">Révolutionner la location immobilière</p>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Simplicité</h3>
+                    <p>Interface intuitive et processus simplifié</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h3>Sécurité</h3>
+                    <p>Transactions et données 100% sécurisées</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Performance</h3>
+                    <p>Rapidité et réactivité optimale</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🌟</div>
+                    <h3>Excellence</h3>
+                    <p>Expérience utilisateur exceptionnelle</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Problématique -->
+        <div class="slide" data-slide="3">
+            <h2 class="gradient-text">La Problématique</h2>
+            <div class="two-column">
+                <div class="column">
+                    <h3><span class="emoji">🏠</span> Propriétaires</h3>
+                    <ul>
+                        <li>Difficulté à gérer les réservations</li>
+                        <li>Manque de visibilité en ligne</li>
+                        <li>Gestion complexe des paiements</li>
+                        <li>Suivi des revenus fastidieux</li>
+                    </ul>
+                </div>
+                <div class="column">
+                    <h3><span class="emoji">✈️</span> Voyageurs</h3>
+                    <ul>
+                        <li>Recherche chronophage</li>
+                        <li>Manque de transparence</li>
+                        <li>Processus de réservation compliqué</li>
+                        <li>Inquiétudes sur la sécurité</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Solution -->
+        <div class="slide" data-slide="4">
+            <h2 class="gradient-text">Notre Solution</h2>
+            <p class="subtitle">Une plateforme tout-en-un qui résout ces problématiques</p>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🔍</div>
+                    <h3>Recherche Intelligente</h3>
+                    <p>Filtres avancés et suggestions personnalisées</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📅</div>
+                    <h3>Réservation Simple</h3>
+                    <p>3 étapes pour réserver en toute confiance</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💳</div>
+                    <h3>Paiements Sécurisés</h3>
+                    <p>Transactions protégées et traçables</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Analytics</h3>
+                    <p>Tableaux de bord et statistiques en temps réel</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Fonctionnalités Clients -->
+        <div class="slide" data-slide="5">
+            <h2 class="gradient-text">Espace Client</h2>
+            <p class="subtitle">Une expérience de réservation fluide et agréable</p>
+            <ul>
+                <li>🔍 <strong>Recherche avancée</strong> - Filtres par type, prix, localisation, équipements</li>
+                <li>🗺️ <strong>Carte interactive</strong> - Visualisation géographique des propriétés</li>
+                <li>❤️ <strong>Favoris</strong> - Sauvegardez vos coups de cœur</li>
+                <li>📅 <strong>Calendrier en temps réel</strong> - Disponibilités instantanées</li>
+                <li>💬 <strong>Système d'avis</strong> - Consultez et partagez vos expériences</li>
+                <li>📜 <strong>Historique</strong> - Suivez toutes vos réservations</li>
+            </ul>
+        </div>
+
+        <!-- Slide 6: Fonctionnalités Propriétaires -->
+        <div class="slide" data-slide="6">
+            <h2 class="gradient-text">Espace Propriétaire</h2>
+            <p class="subtitle">Gérez vos propriétés en toute simplicité</p>
+            <ul>
+                <li>🏠 <strong>Création d'annonces</strong> - Interface intuitive avec galerie photos</li>
+                <li>📅 <strong>Calendrier intelligent</strong> - Gestion des disponibilités simplifiée</li>
+                <li>💰 <strong>Tarification dynamique</strong> - Ajustez vos prix facilement</li>
+                <li>✅ <strong>Gestion des réservations</strong> - Validez ou refusez en un clic</li>
+                <li>📊 <strong>Dashboard analytique</strong> - Suivez vos performances</li>
+                <li>💵 <strong>Revenus</strong> - Historique et statistiques détaillées</li>
+            </ul>
+        </div>
+
+        <!-- Slide 7: Stack Technique -->
+        <div class="slide" data-slide="7">
+            <h2 class="gradient-text">Stack Technologique</h2>
+            <p class="subtitle">Technologies modernes et performantes</p>
+            <div style="margin: 2rem 0;">
+                <h3>Frontend</h3>
+                <div class="tech-stack">
+                    <div class="tech-badge">Next.js 14</div>
+                    <div class="tech-badge">React 18</div>
+                    <div class="tech-badge">TypeScript</div>
+                    <div class="tech-badge">Tailwind CSS</div>
+                    <div class="tech-badge">shadcn/ui</div>
+                    <div class="tech-badge">Zustand</div>
+                </div>
+            </div>
+            <div style="margin: 2rem 0;">
+                <h3>Backend</h3>
+                <div class="tech-stack">
+                    <div class="tech-badge">Firebase Firestore</div>
+                    <div class="tech-badge">Firebase Auth</div>
+                    <div class="tech-badge">Next.js API</div>
+                    <div class="tech-badge">Firebase Storage</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Design System -->
+        <div class="slide" data-slide="8">
+            <h2 class="gradient-text">Design System</h2>
+            <p class="subtitle">Une identité visuelle moderne et fluide</p>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🎨</div>
+                    <h3>Palette de Couleurs</h3>
+                    <p>Bleu Ciel, Rose Bonbon, Ambre Doré</p>
+                    <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1rem;">
+                        <div style="width: 50px; height: 50px; background: #0ea5e9; border-radius: 10px;"></div>
+                        <div style="width: 50px; height: 50px; background: #ec4899; border-radius: 10px;"></div>
+                        <div style="width: 50px; height: 50px; background: #f59e0b; border-radius: 10px;"></div>
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">✨</div>
+                    <h3>Gradients Fluides</h3>
+                    <p>Transitions douces et élégantes</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎭</div>
+                    <h3>Animations</h3>
+                    <p>Micro-interactions engageantes</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <h3>Responsive</h3>
+                    <p>Adapté à tous les écrans</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: Parcours Client -->
+        <div class="slide" data-slide="9">
+            <h2 class="gradient-text">Parcours Utilisateur Client</h2>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-content">
+                        <h3>1. Recherche</h3>
+                        <p>Navigation intuitive et filtres avancés</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-content">
+                        <h3>2. Sélection</h3>
+                        <p>Consultation détaillée avec photos et avis</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-content">
+                        <h3>3. Réservation</h3>
+                        <p>Processus simplifié et paiement sécurisé</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-content">
+                        <h3>4. Suivi</h3>
+                        <p>Dashboard et communication intégrée</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Sécurité -->
+        <div class="slide" data-slide="10">
+            <h2 class="gradient-text">Sécurité & Confidentialité</h2>
+            <p class="subtitle">Votre sécurité est notre priorité</p>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🔐</div>
+                    <h3>Authentification</h3>
+                    <p>Firebase Auth avec tokens JWT sécurisés</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🛡️</div>
+                    <h3>Protection</h3>
+                    <p>Règles Firestore strictes et validation serveur</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h3>Chiffrement</h3>
+                    <p>HTTPS obligatoire et données chiffrées</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📋</div>
+                    <h3>RGPD</h3>
+                    <p>Conformité totale avec droit à l'oubli</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Performance -->
+        <div class="slide" data-slide="11">
+            <h2 class="gradient-text">Performance & Optimisation</h2>
+            <p class="subtitle">Rapidité et efficacité maximales</p>
+            <ul>
+                <li>⚡ <strong>SSR & SSG</strong> - Server-Side Rendering et Static Generation</li>
+                <li>📦 <strong>Code Splitting</strong> - Chargement optimisé des ressources</li>
+                <li>🖼️ <strong>Images WebP</strong> - Format optimisé pour le web</li>
+                <li>🚀 <strong>CDN</strong> - Distribution de contenu globale</li>
+                <li>💾 <strong>Cache intelligent</strong> - Réduction des temps de chargement</li>
+                <li>📊 <strong>Lighthouse > 90</strong> - Score de performance excellent</li>
+            </ul>
+        </div>
+
+        <!-- Slide 12: Métriques -->
+        <div class="slide" data-slide="12">
+            <h2 class="gradient-text">Objectifs & Métriques</h2>
+            <p class="subtitle">KPIs pour mesurer notre succès</p>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">1000+</div>
+                    <div class="stat-label">Utilisateurs actifs<br>(6 mois)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">500+</div>
+                    <div class="stat-label">Propriétés listées<br>(6 mois)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">90%</div>
+                    <div class="stat-label">Taux de satisfaction</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">99.9%</div>
+                    <div class="stat-label">Disponibilité</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 13: Roadmap -->
+        <div class="slide" data-slide="13">
+            <h2 class="gradient-text">Roadmap de Développement</h2>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-content">
+                        <h3>✅ Phase 1 - Fondations</h3>
+                        <p>Architecture, UI/UX, Authentification, CRUD</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-content">
+                        <h3>✅ Phase 2 - Core Features</h3>
+                        <p>Réservations, Paiements, Messagerie</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-content">
+                        <h3>🔄 Phase 3 - Optimisation</h3>
+                        <p>Tests, Performance, SEO</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-content">
+                        <h3>📅 Phase 4 - Évolution</h3>
+                        <p>App Mobile, API, Internationalisation</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 14: Avantages Concurrentiels -->
+        <div class="slide" data-slide="14">
+            <h2 class="gradient-text">Avantages Concurrentiels</h2>
+            <p class="subtitle">Pourquoi choisir HabitatsConnect</p>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <h3>Technologie Moderne</h3>
+                    <p>Stack à jour et scalable</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎨</div>
+                    <h3>UX Exceptionnelle</h3>
+                    <p>Design fluide et intuitif</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔐</div>
+                    <h3>Sécurité Renforcée</h3>
+                    <p>Protection maximale des données</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📈</div>
+                    <h3>Évolutivité</h3>
+                    <p>Architecture modulaire et maintenable</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 15: Modèle Économique -->
+        <div class="slide" data-slide="15">
+            <h2 class="gradient-text">Modèle Économique</h2>
+            <p class="subtitle">Stratégie de monétisation</p>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">💰</div>
+                    <h3>Commission</h3>
+                    <p>10-15% par réservation</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⭐</div>
+                    <h3>Premium</h3>
+                    <p>Mise en avant et analytics</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🛎️</div>
+                    <h3>Services</h3>
+                    <p>Assurance, ménage, conciergerie</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📸</div>
+                    <h3>Photos Pro</h3>
+                    <p>Service photo professionnel</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 16: Déploiement -->
+        <div class="slide" data-slide="16">
+            <h2 class="gradient-text">Infrastructure & Déploiement</h2>
+            <p class="subtitle">Une infrastructure moderne et fiable</p>
+            <div class="two-column">
+                <div class="column">
+                    <h3>Hébergement</h3>
+                    <ul>
+                        <li>Vercel (Frontend)</li>
+                        <li>Firebase (Backend)</li>
+                        <li>Cloudflare (CDN)</li>
+                        <li>Monitoring 24/7</li>
+                    </ul>
+                </div>
+                <div class="column">
+                    <h3>CI/CD</h3>
+                    <ul>
+                        <li>Tests automatiques</li>
+                        <li>Déploiement continu</li>
+                        <li>Rollback automatique</li>
+                        <li>Alertes en temps réel</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 17: Évolutions Futures -->
+        <div class="slide" data-slide="17">
+            <h2 class="gradient-text">Évolutions Futures</h2>
+            <p class="subtitle">Vision à long terme</p>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <h3>App Mobile</h3>
+                    <p>iOS et Android natifs</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h3>IA</h3>
+                    <p>Recommandations intelligentes</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🌍</div>
+                    <h3>International</h3>
+                    <p>Multi-langues et devises</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔗</div>
+                    <h3>API Publique</h3>
+                    <p>Intégrations tierces</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 18: Équipe -->
+        <div class="slide" data-slide="18">
+            <h2 class="gradient-text">L'Équipe</h2>
+            <p class="subtitle">Une équipe passionnée et compétente</p>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">👨‍💻</div>
+                    <h3>Développement</h3>
+                    <p>Full-Stack, Frontend, Backend</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎨</div>
+                    <h3>Design</h3>
+                    <p>UI/UX, Graphic Design</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Gestion</h3>
+                    <p>PM, PO, Scrum Master</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💬</div>
+                    <h3>Support</h3>
+                    <p>Customer Success</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 19: Démonstration -->
+        <div class="slide" data-slide="19">
+            <h2 class="gradient-text">Démonstration</h2>
+            <p class="subtitle">Découvrez l'application en action</p>
+            <div style="max-width: 800px; margin: 2rem auto;">
+                <div class="feature-card" style="padding: 3rem; text-align: center;">
+                    <div class="feature-icon">🖥️</div>
+                    <h3>Interface Utilisateur</h3>
+                    <p style="margin: 2rem 0;">Page d'accueil • Liste des propriétés • Détails • Réservation • Dashboard</p>
+                    <button class="cta-button" onclick="window.open('/', '_blank')">
+                        Voir la Démo Live →
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 20: Conclusion -->
+        <div class="slide" data-slide="20">
+            <div class="logo">🏡</div>
+            <h1 class="gradient-text">Merci !</h1>
+            <p class="subtitle">HabitatsConnect - Connecter les espaces, créer des expériences</p>
+            <div style="margin: 3rem 0;">
+                <p>🌐 www.habitatsconnect.fr</p>
+                <p>📧 contact@habitatsconnect.fr</p>
+                <p>🐙 github.com/krat0s-web/habitatsconnect</p>
+            </div>
+            <button class="cta-button" onclick="goToSlide(1)">
+                ↻ Recommencer la présentation
+            </button>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="navigation">
+        <button class="nav-btn" onclick="previousSlide()">← Précédent</button>
+        <button class="nav-btn" onclick="nextSlide()">Suivant →</button>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = document.querySelectorAll('.slide').length;
+        
+        document.getElementById('total-slides').textContent = totalSlides;
+
+        function updateSlide() {
+            const slides = document.querySelectorAll('.slide');
+            slides.forEach((slide, index) => {
+                slide.classList.remove('active');
+                if (index + 1 === currentSlide) {
+                    slide.classList.add('active');
+                }
+            });
+            document.getElementById('current-slide').textContent = currentSlide;
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides) {
+                currentSlide++;
+                updateSlide();
+            }
+        }
+
+        function previousSlide() {
+            if (currentSlide > 1) {
+                currentSlide--;
+                updateSlide();
+            }
+        }
+
+        function goToSlide(slideNumber) {
+            currentSlide = slideNumber;
+            updateSlide();
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                previousSlide();
+            } else if (e.key === 'Home') {
+                goToSlide(1);
+            } else if (e.key === 'End') {
+                goToSlide(totalSlides);
+            }
+        });
+
+        // Touch/swipe support for mobile
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            if (touchEndX < touchStartX - 50) {
+                nextSlide();
+            }
+            if (touchEndX > touchStartX + 50) {
+                previousSlide();
+            }
+        }
+
+        // Fullscreen on F11
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'F11') {
+                e.preventDefault();
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    document.exitFullscreen();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
